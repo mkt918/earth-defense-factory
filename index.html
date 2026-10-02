@@ -107,8 +107,9 @@ footer button{background:none;border:0;color:var(--dim);text-decoration:underlin
     <div class="bar">
       <div class="seg" id="speed"><button data-s="0">⏸</button><button data-s="1" class="on">×1</button><button data-s="2">×2</button><button data-s="4">×4</button></div>
       <button class="btn sm" id="muteBtn">🔊 音</button>
+      <button class="btn sm" id="rangeBtn">◠ 射程</button>
       <span id="nukeInfo"></span>
-      <span class="note">宇宙にカーソル＝範囲内の敵を自動攻撃／クリック＝☢核ミサイル／地球の上をクリック＝設置場所を選ぶ</span>
+      <span class="note">宇宙にカーソル＝範囲内の敵を自動攻撃／クリック＝☢核ミサイル／地球の上をクリック＝設置場所を選ぶ／砲台はドラッグで移動</span>
     </div>
     <div id="slotPanel"></div>
   </section>
@@ -189,7 +190,7 @@ const COST_G = 1.22;             // 1基増えるごとに次のコスト×1.22
 const GUN_AA = 3;                // 機関砲は敵ミサイルに3倍のダメージ
 const TOWERS = {
   gun:    {name:"機関砲",     cost:40,   dmg:5,   rate:5,   range:140, unlock:1,  color:"#4ade80", desc:"超高速連射。敵ミサイルを最優先で狙い、迎撃に強い"},
-  missile:{name:"ミサイル",   cost:180,  dmg:28,  rate:0.5, range:190, unlock:3,  color:"#fb923c", desc:"連射ミサイルが曲がって追尾し爆発する範囲攻撃"},
+  missile:{name:"ミサイル",   cost:180,  dmg:28,  rate:0.5, range:190, unlock:3,  color:"#fb923c", desc:"ゆっくり曲がって追尾し、一定距離で自爆する範囲攻撃（最初は1連、進化で連数が増える）"},
   tesla:  {name:"雷塔",       cost:500,  dmg:40,  rate:2,   range:180, unlock:6,  color:"#fde047", desc:"稲妻が敵から敵へ連鎖する"},
   laser:  {name:"レーザー",   cost:1500, dmg:60,  rate:0.9, range:200, unlock:10, color:"#38bdf8", desc:"扇状に薙ぎ払い、命中点が爆発する"},
   rail:   {name:"レールガン", cost:5000, dmg:500, rate:0.5, range:330, unlock:15, color:"#c084fc", desc:"最も体力のある敵を狙い、一直線に貫通する"},
@@ -209,7 +210,7 @@ const ALIENS = {
   emissile:{name:"敵ミサイル", hp:1.2, speed:78,  dmg:2.5,  size:3.5, color:"#ef4444"},
 };
 // 兵器を撃ってくる敵：[発射間隔(秒), 1回の発射数, 出現WAVE]
-const SHOOTERS = {tank:[9,1,12], carrier:[5,1,1], boss:[4,2,1]};
+const SHOOTERS = {tank:[9,1,12], carrier:[6,1,1], boss:[5,1,1]};
 const TANK_SHOOTER_RATE = 0.12;
 const shotsAt = (type,base) => base + (S.wave>=30 ? 1 : 0) + (S.wave>=60 ? 1 : 0);
 const POP_LOSS = 0.55;           // dmg 1 あたりの人口損失（億人）
@@ -307,7 +308,7 @@ CONS.forEach((c,ci)=>{
 const KEY = "earthdefense_v8";
 function freshFac(){ return {gold:{L:1,w:6}, rp:{L:1,w:6}}; }
 function fresh(){
-  return {stock:{gold:60, rp:0}, fac:freshFac(), turrets:[], maxT:START_MAXT,
+  return {showRange:true, stock:{gold:60, rp:0}, fac:freshFac(), turrets:[], maxT:START_MAXT,
           popF:1, skills:{}, wave:1, runBest:1, best:1, cores:0, prestiges:0, speed:1, autoW:true, mute:false, last:Date.now()};
 }
 let S = fresh();
@@ -446,7 +447,7 @@ function recount(){
 }
 const towerStats = t => STC[t.type];
 const gunWays = () => Math.min(7, 1 + tierN("gun"));                 // 進化ごとに+1way（最大7way）
-const missileCount = () => Math.min(MISSILES, 2 + 2*tierN("missile"));  // 進化ごとに+2連（20基で10連）
+const missileCount = () => Math.min(MISSILES, 1 + 2*tierN("missile"));  // 最初は1連。進化ごとに+2連（最大10連）
 const teslaChain = () => 4 + tierN("tesla");                          // 進化ごとに連鎖+1
 const railPierce = () => 5 + 3*tierN("rail");                         // 進化ごとに貫通+3
 const missileSplash = () => Math.min(220, 60 + 20*tierN("missile"));  // 進化ごとに爆発拡大
@@ -696,12 +697,14 @@ function updBurst(t, st, T, dt){
       if(dx*dx+dy*dy<=r2){ k++; if(Math.random()<1/k) cand = a; }
     }
     if(!cand){ b.n = 0; break; }
-    const ang = -Math.PI/2 + (Math.random()-.5)*2.6, sp = 170;
-    R.bullets.push({m:1,x:t.x,y:t.y,px:t.x,py:t.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,spd:sp,tgt:cand,dmg:st.dmg,splash:missileSplash(),life:3.2,color:T.color});
+    const ang = -Math.PI/2 + (Math.random()-.5)*2.6, sp = MISSILE_V0;
+    R.bullets.push({m:1,x:t.x,y:t.y,px:t.x,py:t.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,spd:sp,tgt:cand,dmg:st.dmg,splash:missileSplash(),life:8,
+                    dist:0, fuse:st.range*MISSILE_FUSE, color:T.color});
     burst(t.x,t.y,"#fed7aa",3,150,0.18,2.5,0);
   }
   if(b.n<=0) t.burst = null;
 }
+const MISSILE_V0 = 80, MISSILE_VMAX = 230, MISSILE_ACC = 220, MISSILE_FUSE = 1.2;   // 弾速は遅め。射程×1.2を飛ぶと自爆する
 function updMissile(b, dt){
   b.life -= dt;
   if(!b.tgt || b.tgt.dead){
@@ -709,17 +712,19 @@ function updMissile(b, dt){
     for(const a of R.aliens){ if(a.dead) continue; const dx = a.x-b.x, dy = a.y-b.y, q = dx*dx+dy*dy; if(q<bd){ bd = q; bt = a; } }
     b.tgt = bt;
   }
-  b.spd = Math.min(700, b.spd + 950*dt);
+  b.spd = Math.min(MISSILE_VMAX, b.spd + MISSILE_ACC*dt);
   if(b.tgt){
     const dx = b.tgt.x-b.x, dy = b.tgt.y-b.y;
     const want = Math.atan2(dy,dx), cur = Math.atan2(b.vy,b.vx);
     let d = want-cur; while(d>Math.PI) d -= 6.2832; while(d<-Math.PI) d += 6.2832;
-    const turn = Math.min(Math.abs(d), (5+b.spd/70)*dt)*Math.sign(d), hd = cur+turn;
+    const turn = Math.min(Math.abs(d), (3.2+b.spd/110)*dt)*Math.sign(d), hd = cur+turn;
     b.vx = Math.cos(hd)*b.spd; b.vy = Math.sin(hd)*b.spd;
     const rr = 9+ALIENS[b.tgt.type].size;
     if(dx*dx+dy*dy < rr*rr){ explodeMissile(b); return; }
   }else{ const s = Math.hypot(b.vx,b.vy)||1; b.vx = b.vx/s*b.spd; b.vy = b.vy/s*b.spd; }
   b.x += b.vx*dt; b.y += b.vy*dt;
+  b.dist += b.spd*dt;
+  if(b.dist >= b.fuse){ explodeMissile(b); return; }      // 一定距離を進んだら、当たらなくても自爆する
   if(R.pt.length<MAXP-6 && Math.random()<0.8) R.pt.push({x:b.x,y:b.y,vx:(Math.random()-.5)*20,vy:(Math.random()-.5)*20,life:0.45,max:0.45,size:3.2,c:"#fdba74",g:0});
   if(b.y < surfaceY(b.x)-4) b.up = true;           // 砲台は地面の下側にあるので、一度地上へ出たら着地判定を有効にする
   if(b.life<=0 || (b.up && b.y>=surfaceY(b.x))) explodeMissile(b);
@@ -1095,14 +1100,19 @@ function draw(){
     ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
     ctx.beginPath(); ctx.arc(R.place.x,R.place.y,12,0,7); ctx.stroke(); ctx.setLineDash([]);
   }
+  // 砲台の射程（上半分だけ表示。選択中は濃く）
+  for(const t of S.turrets){
+    const sel = R.sel===t;
+    if(!S.showRange && !sel) continue;
+    const rg = STC[t.type].range*(t.type==="laser" ? sweepReach() : 1);
+    ctx.beginPath(); ctx.arc(t.x,t.y,rg,Math.PI,2*Math.PI); ctx.closePath();
+    if(sel){ ctx.fillStyle = "rgba(56,189,248,.07)"; ctx.fill(); ctx.strokeStyle = "rgba(56,189,248,.55)"; ctx.lineWidth = 1.2; }
+    else { ctx.strokeStyle = "rgba(125,211,252,.13)"; ctx.lineWidth = 1; }
+    ctx.stroke();
+  }
   // 砲台
   for(const t of S.turrets){
     const T = TOWERS[t.type];
-    if(R.sel===t){
-      const rg = STC[t.type].range;
-      ctx.beginPath(); ctx.arc(t.x,t.y,rg,0,7);
-      ctx.fillStyle = "rgba(56,189,248,.06)"; ctx.fill(); ctx.strokeStyle = "rgba(56,189,248,.45)"; ctx.lineWidth = 1; ctx.stroke();
-    }
     ctx.beginPath(); ctx.arc(t.x,t.y,10,0,7); ctx.fillStyle = "#101a33"; ctx.fill();
     ctx.strokeStyle = R.sel===t ? "#fff" : T.color; ctx.lineWidth = 2; ctx.stroke();
     ctx.save(); ctx.translate(t.x,t.y); ctx.rotate(t.ang===undefined ? -Math.PI/2 : t.ang);
@@ -1320,13 +1330,44 @@ function canvasPos(e){
   const r = cv.getBoundingClientRect();
   return [(e.clientX-r.left)*W/r.width, (e.clientY-r.top)*H/r.height];
 }
-cv.addEventListener("pointermove", e=>{ const [x,y] = canvasPos(e); R.mouse = {x,y}; });
+// 砲台のドラッグ移動：地球の上（設置可能な帯）で、他の砲台と重ならない位置にだけ動かせる
+let dragC = null;
+const MIN_GAP = 22;
+function validSpot(x, y, self){
+  if(x<14 || x>W-14 || y < surfaceY(x)+12 || y > H-14) return false;
+  for(const o of S.turrets) if(o!==self && Math.hypot(o.x-x,o.y-y) < MIN_GAP) return false;
+  return true;
+}
+cv.addEventListener("pointermove", e=>{
+  const [x,y] = canvasPos(e); R.mouse = {x,y};
+  if(dragC){
+    if(!dragC.moved && Math.hypot(x-dragC.sx,y-dragC.sy) > 6){ dragC.moved = true; cv.style.cursor = "grabbing"; }
+    if(dragC.moved){
+      const nx = x+dragC.ox, ny = y+dragC.oy;
+      if(validSpot(nx,ny,dragC.t)){ dragC.t.x = nx; dragC.t.y = ny; }
+      else if(validSpot(nx,dragC.t.y,dragC.t)) dragC.t.x = nx;        // 斜めに動かせないときは、動かせる方向にだけ動かす
+      else if(validSpot(dragC.t.x,ny,dragC.t)) dragC.t.y = ny;
+    }
+  }
+});
 cv.addEventListener("pointerleave", e=>{ if(e.pointerType==="mouse") R.mouse = null; });
+function endDrag(){
+  if(!dragC) return;
+  if(!dragC.moved && dragC.wasSel){ R.sel = null; panelKey = ""; renderPanel(); }   // ドラッグせずに選択中の砲台をもう一度クリック＝選択解除
+  cv.style.cursor = ""; dragC = null;
+}
+cv.addEventListener("pointerup", endDrag);
+cv.addEventListener("pointercancel", endDrag);
 cv.addEventListener("pointerdown", e=>{
   const [x,y] = canvasPos(e);
   R.mouse = {x,y};
   const t = S.turrets.find(t=>Math.hypot(t.x-x,t.y-y)<=14);
-  if(t){ R.sel = (R.sel===t ? null : t); R.place = null; panelKey = ""; renderPanel(); return; }
+  if(t){
+    dragC = {t, sx:x, sy:y, ox:t.x-x, oy:t.y-y, moved:false, wasSel:R.sel===t};
+    R.sel = t; R.place = null; panelKey = ""; renderPanel();
+    try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+    return;
+  }
   if(y >= surfaceY(x)+12 && y <= H-14){
     if(S.turrets.some(t=>Math.hypot(t.x-x,t.y-y)<24)) return;
     R.place = {x,y}; R.sel = null; panelKey = ""; renderPanel();
@@ -1340,6 +1381,8 @@ document.querySelectorAll("#speed button").forEach(b=>b.addEventListener("click"
   document.querySelectorAll("#speed button").forEach(x=>x.classList.toggle("on",x===b));
 }));
 $("muteBtn").onclick = ()=>{ S.mute = !S.mute; $("muteBtn").textContent = S.mute ? "🔇 音" : "🔊 音"; };
+function syncRangeBtn(){ $("rangeBtn").textContent = S.showRange ? "◠ 射程：全部" : "◠ 射程：選択のみ"; }
+$("rangeBtn").onclick = ()=>{ S.showRange = !S.showRange; syncRangeBtn(); };
 
 /* ====================== 防衛画面：砲台部隊・設置パネル ====================== */
 let panelKey = "";
@@ -1415,7 +1458,7 @@ function renderPanel(){
     return;
   }
   sig = `N:${S.turrets.length}`; if(sig===panelKey) return;
-  box.innerHTML = '<div class="note"><b>地球の上</b>をクリックして設置場所を選ぶか、右の部隊リストで「購入（自動配置）」。<b>宇宙空間にカーソルを置くと、円内の敵を自動で攻撃</b>（範囲は狭く始まり、星座スキルで広がります）。<b>クリックで核ミサイル</b>を地球から発射（金を消費、再装填あり）。敵を連続で倒すとコンボで撃破報酬が最大+30%。<b>重装艦・宇宙空母・母艦は地球へミサイルを撃ってきます。撃ち落とさないと着弾して人口に大ダメージ</b>です（機関砲は迎撃に強い）。</div>';
+  box.innerHTML = '<div class="note"><b>地球の上</b>をクリックして設置場所を選ぶか、右の部隊リストで「購入（自動配置）」。置いた砲台は<b>ドラッグで動かせます</b>。<b>宇宙空間にカーソルを置くと、円内の敵を自動で攻撃</b>（範囲は狭く始まり、星座スキルで広がります）。<b>クリックで核ミサイル</b>を地球から発射（金を消費、再装填あり）。敵を連続で倒すとコンボで撃破報酬が最大+30%。<b>重装艦・宇宙空母・母艦は地球へミサイルを撃ってきます。撃ち落とさないと着弾して人口に大ダメージ</b>です（機関砲は迎撃に強い）。</div>';
   panelKey = sig;
 }
 
@@ -1496,7 +1539,7 @@ function renderPre(){
   $("preBtn").onclick = ()=>{
     const gain = coreGain(); if(gain<1) return;
     if(!confirm(`エネルギーコアを +${gain} 個、スキルポイント +3 を獲得して、最初からやり直します。よろしいですか？`)) return;
-    const keep = {cores:S.cores+gain, best:S.best, speed:S.speed, autoW:S.autoW, mute:S.mute, skills:S.skills, prestiges:S.prestiges+1};
+    const keep = {cores:S.cores+gain, best:S.best, speed:S.speed, autoW:S.autoW, mute:S.mute, showRange:S.showRange, skills:S.skills, prestiges:S.prestiges+1};
     const rp = S.stock.rp;
     S = Object.assign(fresh(), keep); S.stock.rp = rp;
     R.aliens=[]; R.bullets=[]; R.queue=[]; R.nukes=[]; R.pt=[]; R.chainQ=[]; R.coins=[]; R.combo=0; R.fresh = true; R.waveT = -2; R.sel = null; R.place = null; panelKey = "";
@@ -1663,7 +1706,7 @@ function init(){
   }
   R.waveT = -1; R.fresh = true;
   document.querySelectorAll("#speed button").forEach(x=>x.classList.toggle("on", Number(x.dataset.s)===S.speed));
-  $("muteBtn").textContent = S.mute ? "🔇 音" : "🔊 音";
+  $("muteBtn").textContent = S.mute ? "🔇 音" : "🔊 音"; syncRangeBtn();
   buildStrip(); buildEco(); buildUnits(); renderPanel(); updHeader(); updUnits();
   window.addEventListener("beforeunload", save);
   requestAnimationFrame(frame);
