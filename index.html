@@ -26,6 +26,18 @@ header h1{margin:0;font-size:16px;color:var(--accent2);letter-spacing:.05em}
 #skBtn{margin-left:auto;border:1px solid var(--warn);background:#2a2208;color:var(--warn)}
 #skBtn.has{animation:pulse 1.4s infinite}
 #colBtn{border:1px solid var(--epic);background:#2a0f2e;color:var(--epic)}
+#bdBtn{border:1px solid #5eead4;background:#06302b;color:#5eead4}
+/* ビルド */
+.slots{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.slot{width:124px;min-height:78px;border:1px dashed var(--line);border-radius:10px;padding:6px;text-align:center;background:var(--panel2);cursor:pointer}
+.slot.on{border-style:solid;border-color:#5eead4;box-shadow:0 0 10px rgba(94,234,212,.25)}
+.slot .ic{font-size:26px;line-height:1.2}
+.bdGrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:12px}
+@media(max-width:800px){.bdGrid{grid-template-columns:1fr}}
+.icard.eq{border-color:#5eead4;box-shadow:0 0 10px rgba(94,234,212,.3)}
+.syn{margin-bottom:8px}
+.syn .lv{font-size:12px;color:var(--dim)}
+.syn .lv.on{color:#fde68a}
 @keyframes pulse{50%{box-shadow:0 0 12px var(--warn)}}
 main{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(330px,1fr);gap:12px;padding:12px 16px;max-width:1700px;margin:0 auto}
 @media(max-width:1000px){main{grid-template-columns:1fr}}
@@ -107,11 +119,12 @@ footer button{background:none;border:0;color:var(--dim);text-decoration:underlin
 <header>
   <h1>🌍 地球防衛ファクトリー</h1>
   <div class="stat big"><small>世界人口</small><b id="hPop">80億</b></div>
-  <div class="stat"><small>WAVE（最高）</small><b id="hWave">1</b></div>
+  <div class="stat big"><small>生存日数（最高）</small><b id="hWave">DAY 1</b></div>
   <div class="stat"><small>💰 金</small><b id="hGold" style="color:#fbbf24">0</b><i id="hRate"></i></div>
   <div class="stat"><small>🔮 転生pt</small><b id="hSoul" style="color:#c4b5fd">0</b></div>
   <button class="hbtn" id="skBtn">♻ 転生スキルツリー</button>
   <button class="hbtn" id="colBtn">💎 コレクション</button>
+  <button class="hbtn" id="bdBtn">🧩 ビルド</button>
 </header>
 
 <main>
@@ -122,6 +135,7 @@ footer button{background:none;border:0;color:var(--dim);text-decoration:underlin
       <button class="btn sm" id="muteBtn">🔊 音</button>
       <button class="btn sm" id="rangeBtn">◠ 射程</button>
       <button class="btn sm" id="alignBtn">⇧ 最前線に整列</button>
+      <button class="btn sm" id="gfxBtn">⚙ 画質：自動</button>
       <span id="nukeInfo"></span>
     </div>
     <div class="note" style="margin-bottom:6px">宇宙にカーソル＝範囲内の敵を自動攻撃／クリック＝☢核ミサイル／地球の上をクリック＝設置場所を選ぶ／砲台はドラッグで移動／宝箱はカーソルで触れて回収／Space＝一時停止・1〜3＝速度</div>
@@ -148,7 +162,7 @@ footer button{background:none;border:0;color:var(--dim);text-decoration:underlin
     <div class="skSide">
       <div class="skHead"><h3>♻ 転生スキルツリー</h3><button class="btn pri" id="skClose">▶ 防衛に戻る</button></div>
       <div class="card" style="margin-bottom:8px">🔮 転生pt：<b id="skSP" style="color:#c4b5fd;font-size:18px">0</b>
-        <div class="note" style="margin-top:4px">転生pt は<b>人口が全滅したとき</b>（または自ら転生したとき）に、到達WAVEと倒したボスの数に応じて手に入ります。スキルは<b>永続</b>で、何度転生しても消えません。いちばん下から上へ登り、<b>神</b>を目指します（全100個・効果はすべて掛け合わせ）。</div></div>
+        <div class="note" style="margin-top:4px">転生pt は<b>人口が全滅したとき</b>（または自ら転生したとき）に、生き延びた日数と倒したボスの数に応じて手に入ります。スキルは<b>永続</b>で、何度転生しても消えません。いちばん下から上へ登り、<b>神</b>を目指します（全100個・効果はすべて掛け合わせ）。</div></div>
       <div class="card" id="skInfo" style="margin-bottom:8px">スキルをクリックして詳細を見る</div>
       <div class="card"><div id="skList" style="font-size:12px"></div></div>
     </div>
@@ -180,6 +194,28 @@ footer button{background:none;border:0;color:var(--dim);text-decoration:underlin
   <button class="btn pri" id="deadGo" style="margin-top:14px;font-size:16px;padding:10px 24px">♻ 転生してスキルツリーへ</button>
 </div></div>
 
+<!-- ビルド -->
+<div id="bdOv" class="ov">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="skHead"><h3 style="color:#5eead4">🧩 ビルド（スキル装備）</h3><button class="btn pri" id="bdClose">▶ 防衛に戻る</button></div>
+    <div class="card" style="margin-bottom:10px"><div id="bdSlots" class="slots"></div><div class="note" id="bdNote"></div></div>
+    <div class="bdGrid">
+      <div><h2>スキル一覧（クリックで装備／解除）</h2><div class="igrid" id="bdList"></div></div>
+      <div><h2>シナジー（同じ属性をそろえると発動）</h2><div id="bdSyn"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- クリア -->
+<div id="clearOv" class="ovc"><div class="box">
+  <div class="epicT" style="color:#fde68a">MISSION COMPLETE</div>
+  <h2 style="font-size:26px;color:#fde68a;margin:6px 0">🌍 人類は366日を生き延びた！</h2>
+  <div id="clearInfo"></div>
+  <div class="bar" style="justify-content:center;margin-top:14px">
+    <button class="btn pri" id="clearReb">♻ 転生してさらに強くなる</button>
+    <button class="btn" id="clearGo">▶ エンドレスに挑む（DAY 367〜）</button></div>
+</div></div>
+
 <script>
 "use strict";
 /* ====================== 定数・データ ====================== */
@@ -187,7 +223,7 @@ const W = 1200, H = 720;
 const EC = {x:600, y:H-170+2000, r:2000};           // 地球（巨大な円の上端だけが見える）
 const surfaceY = x => EC.y - Math.sqrt(Math.max(0, EC.r*EC.r - (x-EC.x)*(x-EC.x)));
 const START_MAXT = 10, START_GOLD = 150;
-const PASSIVE_GOLD = 2;          // 毎秒の金（WAVEが進むほど少し増える）
+const PASSIVE_GOLD = 2;          // 毎秒の金（DAYが進むほど少し増える）
 const POP_BASE = 80;             // 世界人口（億人）
 const POP_REGEN = 0.0003;        // 人口の自然回復：1秒あたり最大人口の0.03%（ほぼ回復しない。全滅寸前から満タンまで約55分）
 const POP_LOSS = 0.55;           // dmg 1 あたりの人口損失（億人）
@@ -208,7 +244,7 @@ const TOWERS = {
 const TYPES = Object.keys(TOWERS);
 const MISSILES = 10;
 
-// hp は「その WAVE の基準体力」に対する倍率。info は初登場時に表示する説明
+// hp は「その DAY の基準体力」に対する倍率。info は初登場時に表示する説明
 const ALIENS = {
   scout:  {name:"偵察機",     hp:0.5, speed:70,  dmg:0.1,  size:2,   color:"#86efac"},
   grunt:  {name:"兵士",       hp:1,   speed:46,  dmg:0.2,  size:2.6, color:"#fde047"},
@@ -223,7 +259,7 @@ const ALIENS = {
   carrier:{name:"宇宙空母",   hp:50,  speed:16,  dmg:10,   size:20,  color:"#94a3b8"},
   // 敵が地球へ向けて撃つミサイル。速度は遅め。撃ち落とさないと着弾して大ダメージ
   emissile:{name:"敵ミサイル", hp:2.0, speed:85,  dmg:1.3,  size:3.5, color:"#ef4444"},
-  // ボス（5WAVEごとに登場。倒すと宝箱を落とす）
+  // ボス（5日ごとに登場。倒すと宝箱を落とす）
   hive:    {name:"女王蜂",   boss:1, hp:120, speed:20, dmg:25, size:14, sides:6, color:"#facc15", info:"偵察機の群れを次々と産み出す"},
   boss:    {name:"母艦",     boss:1, hp:250, speed:20, dmg:35, size:13, sides:0, color:"#e879f9", info:"地球へミサイルを撃ってくる"},
   fortress:{name:"要塞艦",   boss:1, hp:240, speed:16, dmg:40, size:18, sides:8, color:"#60a5fa", info:"再生するシールドを持ち、ミサイルも撃つ"},
@@ -235,12 +271,16 @@ const ALIENS = {
   gravity: {name:"重力核",   boss:1, hp:340, speed:15, dmg:50, size:17, sides:0, color:"#818cf8", info:"周囲の敵が受けるダメージを半減する重力場を持つ"},
   emp:     {name:"EMP艦",    boss:1, hp:320, speed:18, dmg:50, size:15, sides:5, color:"#fde047", info:"EMPで周囲の砲台を一時停止させる"},
   overlord:{name:"終焉の王", boss:1, hp:500, speed:13, dmg:80, size:22, sides:9, color:"#ef4444", info:"シールド・ミサイル・ドローン発艦をすべて使う最後の王"},
+  // DAY 366 のラスボス。地上には降りず、上空からミサイルの雨と眷属・ボスを呼び続ける
+  final:   {name:"星喰らい", boss:1, final:1, hp:12000, speed:14, dmg:1000, size:64, sides:12, color:"#ff2d55", info:"366日目に現れる、星を喰らう最後の敵。倒せば人類の勝利"},
 };
 const BOSS_ORDER = ["hive","boss","fortress","splitter","phantom","regen","bomber","twin","gravity","emp","overlord"];
+const FINAL_DAY = 366;            // 365日を生き延びると、366日目にラスボス
+const CLEAR_BONUS = 1000;          // クリアボーナスの転生pt
 const isBoss = t => !!ALIENS[t].boss;
 const isBig = t => isBoss(t) || t==="carrier";
-// 兵器を撃ってくる敵：[発射間隔(秒), 1回の発射数, 出現WAVE]
-// 兵器を撃ってくる敵：[発射間隔(秒), 1回の発射数, 出現WAVE, 撃てる個体の割合]
+// 兵器を撃ってくる敵：[発射間隔(秒), 1回の発射数, 出現DAY]
+// 兵器を撃ってくる敵：[発射間隔(秒), 1回の発射数, 出現DAY, 撃てる個体の割合]
 // 序盤から兵士の一部もミサイルを撃ってくる。迎撃が追いつかないと人口がじわじわ削られる
 const SHOOTERS = {
   grunt:[6,1,2,0.15], tank:[6,1,4,0.5], shell:[7,1,7,0.4], carrier:[4,2,1,1],
@@ -276,6 +316,49 @@ const ITEMS = [
   {id:"crown",    ic:"👑", name:"王者の冠",       k:"all",       v:.08},
 ];
 
+/* ---------- ビルド：転生スキルツリーで手に入るスキルを装備する。同じ属性をそろえるとシナジー ---------- */
+const TAGS = {fire:{n:"炎",ic:"🔥",c:"#fb923c"}, thunder:{n:"雷",ic:"⚡",c:"#fde047"}, ice:{n:"氷",ic:"❄️",c:"#7dd3fc"}, mech:{n:"機械",ic:"⚙️",c:"#cbd5e1"},
+  holy:{n:"聖",ic:"✨",c:"#fef3c7"}, time:{n:"時",ic:"⏳",c:"#c4b5fd"}, wealth:{n:"富",ic:"💰",c:"#fbbf24"}, psi:{n:"念",ic:"🧠",c:"#f0abfc"}};
+const SKILLS = [
+  {id:"incendiary", ic:"🔥", name:"焼夷弾",         tags:["fire"],           flag:"burn",       desc:"機関砲の弾が敵を燃やす（3秒間、威力の40%/秒）"},
+  {id:"alchemy",    ic:"⚗️", name:"錬金術",         tags:["wealth"],         fx:[["rew",.6]],  desc:"撃破報酬 +60%"},
+  {id:"psiamp",     ic:"🧠", name:"念動増幅",       tags:["psi"],            fx:[["orbDmg",1],["orbN",2]], desc:"自動攻撃の威力 ×2、同時目標 +2"},
+  {id:"thor",       ic:"⚡", name:"雷神の加護",     tags:["thunder"],        fx:[["p_tesla",.6],["chain",3]], desc:"雷塔の威力 +60%、稲妻の連鎖 +3"},
+  {id:"factory",    ic:"🏭", name:"自動増設",       tags:["mech"],           fx:[["slots",3],["cost",.1]], desc:"設置上限 +3、砲台コスト −10%"},
+  {id:"shield",     ic:"🛡️", name:"聖なる盾",       tags:["holy"],           fx:[["dmgcut",.3],["regen",1]], desc:"着弾被害 −30%、人口回復 ×2"},
+  {id:"zero",       ic:"❄️", name:"絶対零度",       tags:["ice"],            flag:"chill",      desc:"すべての攻撃が敵を1秒間減速させる（25%）"},
+  {id:"inferno",    ic:"🌋", name:"業火の弾頭",     tags:["fire","mech"],    fx:[["p_missile",.6]], flag:"bigSplash", desc:"ミサイルの威力 +60%、爆発範囲 ×1.5"},
+  {id:"timestop",   ic:"⏱️", name:"時間停止",       tags:["time"],           flag:"timeStop",   desc:"25秒ごとに、すべての敵を2秒間止める"},
+  {id:"static",     ic:"🌩️", name:"帯電フィールド", tags:["thunder","psi"],  flag:"orbChain",   desc:"自動攻撃が当たった敵から、稲妻が近くの2体へ連鎖（50%）"},
+  {id:"aanet",      ic:"🛰️", name:"迎撃網",         tags:["mech","ice"],     fx:[["aa",2]],    desc:"敵ミサイルへの与ダメージ ×3"},
+  {id:"overdrive",  ic:"🔧", name:"過給機",         tags:["mech","time"],    fx:[["rate",.3]], desc:"全砲台の発射速度 +30%"},
+  {id:"photon",     ic:"🔆", name:"光子砲",         tags:["fire","holy"],    fx:[["p_laser",.8]], flag:"wideSweep", desc:"レーザーの威力 +80%、ビームの幅 ×1.5"},
+  {id:"investor",   ic:"📈", name:"投資家",         tags:["wealth","mech"],  fx:[["gold",2]],  flag:"interest", desc:"毎秒の金 ×3、DAYが始まるたびに所持金の3%の利子"},
+  {id:"smite",      ic:"✝️", name:"天罰",           tags:["holy","thunder"], flag:"smite",      desc:"8秒ごとに、最も体力の多い敵5体へ天の光（砲台の平均威力の40倍）"},
+  {id:"railboost",  ic:"🧲", name:"電磁加速",       tags:["thunder","mech"], fx:[["p_rail",.7]], flag:"railPierce", desc:"レールガンの威力 +70%、貫通 +6"},
+  {id:"haste",      ic:"💫", name:"加速思考",       tags:["time","psi"],     fx:[["orbRate",.5]], desc:"自動攻撃の連射 +50%"},
+  {id:"winter",     ic:"☃️", name:"核の冬",         tags:["ice","fire"],     fx:[["bombCd",.4],["bombDmg",1]], flag:"nukeFreeze", desc:"核の再装填 −40%・威力 ×2、着弾範囲の敵を3秒凍結"},
+  {id:"soulEater",  ic:"👻", name:"魂喰い",         tags:["wealth","holy"],  fx:[["soul",.5]], desc:"獲得する転生pt ×1.5"},
+  {id:"thousand",   ic:"🙏", name:"千手観音",       tags:["psi","holy"],     fx:[["orbR",40],["orbN",3]], desc:"自動攻撃の範囲 +40px、同時目標 +3"},
+  {id:"divine",     ic:"👁️", name:"神の権能",       tags:["fire","thunder","ice","mech","holy","time","wealth","psi"], fx:[["all",1]], desc:"すべての属性として数える。攻撃力・撃破報酬 ×2"},
+];
+const SKI = {}; SKILLS.forEach(k=>{ SKI[k.id] = k; });
+// 属性ごとのシナジー：[必要数, 説明, 効果, 特殊効果]
+const SYN = {
+  fire:   [[2,"全砲台の攻撃力 +40%",{atk:.4}], [3,"倒した敵が必ず誘爆し、誘爆の威力×2",null,"fireChain"], [4,"全砲台の攻撃力 ×2",{atk:1}]],
+  thunder:[[2,"雷塔・レールガンの威力 +60%",{p_tesla:.6,p_rail:.6}], [3,"稲妻の連鎖 +3",{chain:3}], [4,"全砲台の攻撃力 ×1.8",{atk:.8}]],
+  ice:    [[2,"減速が強くなる（25%→40%）",null,"ice2"], [3,"敵全体の移動速度 −15%",null,"iceAura"]],
+  mech:   [[2,"砲台の購入コスト −15%",{cost:.15}], [3,"全砲台の発射速度 +25%",{rate:.25}], [4,"設置上限 +5",{slots:5}]],
+  holy:   [[2,"着弾被害 −25%",{dmgcut:.25}], [3,"人口回復 ×3・天罰の間隔が半分",{regen:2},"holy3"], [4,"最大人口 ×2",{popMax:1}]],
+  time:   [[2,"核の再装填 −30%",{bombCd:.3}], [3,"時間停止の間隔が半分・自動攻撃の連射 +50%",{orbRate:.5},"time3"]],
+  wealth: [[2,"撃破報酬 +50%",{rew:.5}], [3,"毎秒の金 ×3・転生pt +30%",{gold:2,soul:.3}]],
+  psi:    [[2,"自動攻撃の威力 ×2",{orbDmg:1}], [3,"自動攻撃の同時目標 +4・範囲 +30px",{orbN:4,orbR:30}], [4,"自動攻撃の威力 さらに ×3",{orbDmg:2}]],
+};
+// 転生スキルツリーの各段に1つずつ（神の御前は2つ）スキルの星を置く。頂上は「神の権能」
+const SKILL_ORDER = ["incendiary","alchemy","psiamp","thor","factory","shield","zero","inferno","timestop","static",
+  "aanet","overdrive","photon","investor","smite","railboost","haste","winter","soulEater","thousand"];
+const SLOT_TIERS = [4,8,12,16,20];   // この段に到達すると装備スロット+1（最初は2つ、最大7つ）
+
 /* ---------- 転生スキルツリー：下から上へ登り、神に近づく。全100個。各スキルは1回解放するだけ。効果はすべて掛け合わせ ---------- */
 const TIER_W = [7,7,7,7,6,6,6,6,6,5,5,5,5,5,4,4,3,3,2,1];   // 各段のスキル数（合計100）。上ほど狭まり、頂上は1つ
 const REALMS = ["人","人","英雄","英雄","聖者","聖者","賢者","賢者","天使","天使","大天使","大天使","熾天使","熾天使","半神","半神","神域","神域","神の御前","神"];
@@ -283,11 +366,11 @@ const SKH = 2400;                                            // ツリーのキ�
 const SK_COL = {atk:"#f87171",all:"#fde68a",rate:"#f87171",range:"#38bdf8",startT:"#38bdf8",rew:"#fbbf24",gold:"#fbbf24",startGold:"#fbbf24",cost:"#fbbf24",soul:"#c4b5fd",
   popMax:"#4ade80",dmgcut:"#4ade80",regen:"#4ade80",aa:"#4ade80",orbDmg:"#7dd3fc",orbR:"#7dd3fc",orbN:"#7dd3fc",orbRate:"#7dd3fc",
   bombDmg:"#fb923c",bombR:"#fb923c",bombCd:"#fb923c",p_gun:"#c084fc",p_missile:"#c084fc",p_tesla:"#c084fc",p_laser:"#c084fc",p_rail:"#c084fc",
-  warp:"#f0abfc",chest:"#f0abfc",chain:"#fde047"};
+  warp:"#f0abfc",chest:"#f0abfc",chain:"#fde047",skill:"#5eead4"};
 const SK_NAME = {atk:"攻撃力",all:"全能",rate:"連射",range:"射程",startT:"配備枠",rew:"撃破報酬",gold:"毎秒の金",startGold:"開始資金",cost:"値引き",soul:"魂の収穫",
   popMax:"最大人口",dmgcut:"防壁",regen:"人口回復",aa:"迎撃",orbDmg:"念動の威力",orbR:"念動の範囲",orbN:"念動の分身",orbRate:"念動の連射",
   bombDmg:"核の威力",bombR:"核の範囲",bombCd:"核の再装填",p_gun:"機関砲",p_missile:"ミサイル",p_tesla:"雷塔",p_laser:"レーザー",p_rail:"レールガン",
-  warp:"ワープ",chest:"宝運",chain:"連鎖雷"};
+  warp:"ワープ",chest:"宝運",chain:"連鎖雷",skill:"スキル"};
 const SK_POOL = ["rate","rew","popMax","orbDmg","p_gun","bombDmg","range","dmgcut","p_missile","gold","orbR","p_tesla","aa","soul",
   "cost","p_laser","regen","orbN","bombR","p_rail","startGold","chain","orbRate","warp","startT","bombCd","chest"];
 // 上の段ほど強い（倍率系は1段ごとに×1.12）
@@ -306,18 +389,20 @@ function skVal(k,t){
 }
 const TN = [], TNI = {};
 (function(){
-  let k = 0, below = [];
+  let k = 0, si = 0, below = [];
   TIER_W.forEach((w,ti)=>{
     const t = ti+1, y = SKH-110-ti*112, row = [], trunk = w%2 ? (w-1)/2 : w/2-1;
     for(let i=0;i<w;i++){
       const x = 500 + (i-(w-1)/2)*130;
-      let key, v, name;
-      if(t===TIER_W.length){ key = "all"; v = 2.0; name = "神化"; }                   // 頂上：神になる
-      else{
+      let key, v, name, skill = null;
+      if(t===TIER_W.length){ key = "all"; v = 2.0; name = "神化"; skill = "divine"; }  // 頂上：神になる
+      else if(t===TIER_W.length-1 || i===(trunk+1)%w){                                // スキルの星（装備できるスキルを得る）
+        skill = SKILL_ORDER[si++]; key = "skill"; v = 0; name = REALMS[ti]+"の秘技「"+SKI[skill].name+"」";
+      }else{
         key = i===trunk ? (t%4===0 ? "all" : "atk") : SK_POOL[(k++)%SK_POOL.length];  // 中央の幹は火力
         v = skVal(key, t); name = REALMS[ti]+"の"+SK_NAME[key];
       }
-      const n = {id:"t"+t+"_"+i, t, x, y, k:key, v, name, cost:Math.round(3*Math.pow(1.55,t-1))*(t===TIER_W.length?3:1),
+      const n = {id:"t"+t+"_"+i, t, x, y, k:key, v, name, skill, cost:Math.round(3*Math.pow(1.55,t-1))*(t===TIER_W.length?3:1),
                  below:below.filter(b=>Math.abs(b.x-x)<=131).map(b=>b.id)};
       TN.push(n); TNI[n.id] = n; row.push(n);
     }
@@ -329,9 +414,9 @@ const EFF = {atk:"全砲台の攻撃力", rate:"全砲台の発射速度", range
   p_gun:"機関砲の威力", p_missile:"ミサイルの威力", p_tesla:"雷塔の威力", p_laser:"レーザーの威力", p_rail:"レールガンの威力",
   orbDmg:"自動攻撃の威力", orbR:"自動攻撃の範囲", orbN:"自動攻撃の同時目標数", orbRate:"自動攻撃の連射速度",
   bombDmg:"核ミサイルの威力", bombR:"核ミサイルの範囲", bombCd:"核ミサイルの再装填時間", cost:"砲台の購入コスト",
-  chain:"稲妻の連鎖数", warp:"開始WAVE", chest:"宝箱でルーレットをもう1回引く確率", all:"攻撃力・撃破報酬（発射速度は半分）"};
+  chain:"稲妻の連鎖数", warp:"開始DAY", chest:"宝箱でルーレットをもう1回引く確率", all:"攻撃力・撃破報酬（発射速度は半分）"};
 // 足し算でまとめる効果（数や確率）。減らす効果は ×(1−値) で掛け合わせ、それ以外は ×(1＋値) で掛け合わせる
-const SUMK = {orbR:1, orbN:1, chain:1, warp:1, startT:1, startGold:1, chest:1};
+const SUMK = {orbR:1, orbN:1, chain:1, warp:1, startT:1, startGold:1, chest:1, slots:1};
 const REDK = {dmgcut:1, cost:1, bombCd:1};
 function effText(k,v){
   v = Math.round(v*1000)/1000;
@@ -349,7 +434,7 @@ const treeOwned = () => TN.reduce((s,n)=>s+(S.tree[n.id]?1:0),0);
 const KEY = "earthdefense_v9";
 function fresh(){
   return {showRange:true, gold:START_GOLD, turrets:[], maxT:START_MAXT, popF:1, wave:1, runStart:1, runBest:1, runBoss:0, orb:{d:0,r:0,s:0},
-          best:1, souls:0, soulsAll:0, rebirths:0, tree:{}, items:{}, seen:{}, speed:1, mute:false, last:Date.now()};
+          best:1, souls:0, soulsAll:0, rebirths:0, tree:{}, items:{}, seen:{}, equip:[], clears:0, clearBest:0, runTime:0, gfx:"auto", speed:1, mute:false, last:Date.now()};
 }
 let S = fresh();
 function load(){
@@ -360,7 +445,7 @@ function load(){
       if(Object.keys(S.tree).some(id=>!TNI[id])){ S.tree = {}; S.souls = S.soulsAll; return "treeReset"; }   // 旧ツリー（レベル制）は全額返金
       return "load";
     }
-    // 旧バージョン（v8）のセーブがあれば、最高WAVEに応じた転生ptを引き継ぐ
+    // 旧バージョン（v8）のセーブがあれば、最高DAYに応じた転生ptを引き継ぐ
     const old = localStorage.getItem("earthdefense_v8");
     if(old){
       const d = JSON.parse(old), b = Math.max(1, d.best||1);
@@ -377,16 +462,40 @@ function save(){
 
 const R = {aliens:[], bullets:[], fx:[], pt:[], nukes:[], queue:[], chests:[], spawnT:0, spawnI:0.1, waveT:-1, sel:null, place:null, nukeCd:0, flash:0, white:0,
            shake:0, combo:0, comboT:0, bestCombo:0, kills:0, slowT:0, chainQ:[], coins:[], orbT:0, flashT:0, fresh:true, mouse:null,
-           grav:[], rouQ:0, rou:false, dead:false, ov:null, pendingRun:false, prevSpeed:1};
+           grav:[], rouQ:0, rou:false, dead:false, ov:null, pendingRun:false, prevSpeed:1,
+           smT:8, tsT:25, freeze:0, finalDown:false, clearT:0, cleared:false, fps:60, fpsN:0, fpsT:0, autoLow:false};
 
 /* ====================== 計算 ====================== */
 const $ = id => document.getElementById(id);
-let BM = {}, BA = {};
+let BM = {}, BA = {}, BF = {};   // BF：ビルドで得た特殊効果
+const ownedSkills = () => TN.filter(n=>n.skill && S.tree[n.id]).map(n=>n.skill);
+const treeTop = () => TN.reduce((m,n)=>S.tree[n.id]?Math.max(m,n.t):m,0);
+const slotCount = () => 2 + SLOT_TIERS.filter(t=>treeTop()>=t).length;
+function validEquip(){
+  const own = new Set(ownedSkills());
+  S.equip = (S.equip||[]).filter((id,i,a)=>own.has(id) && a.indexOf(id)===i).slice(0, slotCount());
+  return S.equip;
+}
+function tagCounts(){
+  const c = {}; Object.keys(TAGS).forEach(t=>{ c[t] = 0; });
+  validEquip().forEach(id=>SKI[id].tags.forEach(t=>{ c[t]++; }));
+  return c;
+}
+const tagHtml = tags => tags.length>=8 ? `<span style="color:#fde68a">全属性</span>` : tags.map(t=>`<span style="color:${TAGS[t].c}">${TAGS[t].ic}${TAGS[t].n}</span>`).join(" ");
 function recalcBonus(){
   BM = {}; BA = {};
   const add = (k,x)=>{ if(SUMK[k]) BA[k] = (BA[k]||0)+x; else if(REDK[k]) BM[k] = (BM[k]||1)*Math.max(0,1-x); else BM[k] = (BM[k]||1)*(1+x); };
-  TN.forEach(n=>{ if(S.tree[n.id]) add(n.k, n.v); });
+  TN.forEach(n=>{ if(S.tree[n.id] && n.k!=="skill") add(n.k, n.v); });
   ITEMS.forEach(it=>{ const c = S.items[it.id]||0; if(c) add(it.k, it.v*c); });
+  // ビルド：装備スキルの効果とシナジー
+  BF = {};
+  validEquip().forEach(id=>{ const sk = SKI[id]; (sk.fx||[]).forEach(([k,v])=>add(k,v)); if(sk.flag) BF[sk.flag] = 1; });
+  const tc = tagCounts();
+  Object.keys(SYN).forEach(tg=>SYN[tg].forEach(([need,,fx,flag])=>{
+    if(tc[tg]<need) return;
+    if(fx) Object.keys(fx).forEach(k=>add(k, fx[k]));
+    if(flag) BF[flag] = 1;
+  }));
   recount();
 }
 const bM = k => BM[k]||1, bA = k => BA[k]||0;
@@ -405,20 +514,26 @@ const costDisc = () => Math.max(0.3, bM("cost"));
 const dmgCut = () => Math.max(0.25, bM("dmgcut"));
 const popMax = () => POP_BASE*bM("popMax");
 const popNow = () => S.popF*popMax();
+const maxT = () => S.maxT + bA("slots");                                 // 設置上限（ビルドの増設を含む）
 const goldRate = () => PASSIVE_GOLD*bM("gold")*(1+0.05*(S.wave-1));
 
-// 敵の数（物量で押してくる）：WAVE1は27体 → WAVE30で約300体 → WAVE80以降は1000体
+// 敵の数（物量で押してくる）：DAY1は27体 → DAY30で約300体 → DAY80以降は1000体
 const waveN = w => Math.min(1000, Math.floor(20 + 7*w + 0.08*w*w));
-// 敵の速度：WAVEごとに+0.8%（最大+60%）
+// 敵の速度：DAYごとに+0.8%（最大+60%）
 const speedMult = w => 1 + Math.min(0.6, 0.008*(w-1));
-// 基準体力：WAVE30までは緩やか（×1.105／WAVE）。WAVE30を超えると伸び率が加速して「壁」になる。
+// 基準体力：DAY30までは緩やか（×1.105／DAY）。DAY30を超えると伸び率が加速して「壁」になる。
 // 伸び率には上限（HP_RMAX）があり、転生スキルとエピックアイテムで壁の先へ進める
 const HP_A = 0.13, HP_B = 0.008, HP_W0 = 20, HP_RMAX = 0.20;
 const HP_BASE = 12;
-const WAVE_GAP = 3.5;             // 出現が終わってから次のWAVEまでの秒数（短いほど敵が重なって押し寄せる）
+const WAVE_GAP = 3.5;             // 出現が終わってから次のDAYまでの秒数（短いほど敵が重なって押し寄せる）
+const HP_LATE = 150, HP_RLATE = 0.07, HP_DEC = 0.001;   // DAY150を過ぎると伸び率が少しずつ下がり、最低0.07/日
+function hpRate(k){
+  const r = Math.min(HP_RMAX, HP_A + 2*HP_B*Math.max(0, k-HP_W0));
+  return k<=HP_LATE ? r : Math.max(HP_RLATE, r - HP_DEC*(k-HP_LATE));
+}
 const _hpLog = [0];
 function baseHp(w){
-  while(_hpLog.length < w){ const k = _hpLog.length; _hpLog.push(_hpLog[k-1] + Math.min(HP_RMAX, HP_A + 2*HP_B*Math.max(0, k-HP_W0))); }
+  while(_hpLog.length < w){ const k = _hpLog.length; _hpLog.push(_hpLog[k-1] + hpRate(k)); }
   return HP_BASE*Math.exp(_hpLog[w-1]);          // 1体ずつは少し柔らかめ。そのぶん数で押す
 }
 // 撃破報酬（金）：敵の硬さの0.8乗。数が増えるほど1体の価値は下がる（1ウェーブの総額 ∝ 硬さ^0.8×√数）
@@ -426,9 +541,9 @@ const REW_K = 1.0, REW_EXP = 0.7;
 function reward(a){
   return REW_K * Math.pow(a.maxhp, REW_EXP) * Math.sqrt(16/waveN(S.wave)) * rewM() * (1+Math.min(0.3, R.combo*0.002));
 }
-// 転生pt：到達WAVEの1.3乗＋ボス撃破数（ワープで飛ばしたWAVEの分は少なめに数える）
+// 転生pt：到達DAYの1.3乗＋ボス撃破数（ワープで飛ばしたDAYの分は少なめに数える）
 const soulGain = () => S.runBest<5 ? 0 : Math.floor((0.8*(Math.pow(S.runBest,1.3) - 0.7*Math.pow(S.runStart,1.3)) + S.runBoss) * soulM());
-// ワープ：開始WAVEは「全期間最高の6割」まで。飛ばしたWAVEで稼げたはずの金を受け取って始まる
+// ワープ：開始DAYは「全期間最高の6割」まで。飛ばしたDAYで稼げたはずの金を受け取って始まる
 const startWaveOf = () => Math.max(1, Math.min(1+bA("warp"), Math.floor(S.best*0.6)));
 function warpGold(w){
   let g = 0;
@@ -451,10 +566,10 @@ function recount(){
 const gunWays = () => Math.min(7, 1 + tierN("gun"));                 // 進化ごとに+1way（最大7way）
 const missileCount = () => Math.min(MISSILES, 1 + 2*tierN("missile"));  // 最初は1連。進化ごとに+2連（最大10連）
 const teslaChain = () => 4 + Math.min(8, tierN("tesla")) + bA("chain");   // 進化ごとに連鎖+1（最大+8）
-const railPierce = () => 6 + Math.min(24, 3*tierN("rail"));           // 進化ごとに貫通+3（最大+24）
-const missileSplash = () => Math.min(220, 60 + 20*tierN("missile"));  // 進化ごとに爆発拡大
+const railPierce = () => 6 + Math.min(24, 3*tierN("rail")) + (BF.railPierce?6:0);           // 進化ごとに貫通+3（最大+24）
+const missileSplash = () => Math.min(220, 60 + 20*tierN("missile"))*(BF.bigSplash?1.5:1);  // 進化ごとに爆発拡大
 const sweepArc = () => Math.min(1.47, 0.5 + 0.28*tierN("laser"));     // 薙ぎ払いの半角(rad)。進化で拡大
-const sweepWidth = () => Math.min(75, 16 + 8*tierN("laser"));         // ビームの当たり幅
+const sweepWidth = () => Math.min(75, 16 + 8*tierN("laser"))*(BF.wideSweep?1.5:1);         // ビームの当たり幅
 const sweepBlast = () => Math.min(210, 42 + 24*tierN("laser"));       // 命中点の爆発半径
 const sweepReach = () => Math.min(1.6, 1 + 0.12*tierN("laser"));      // ビームの長さ（射程に対する倍率）
 const railCd = st => Math.max(1/st.rate, RAIL_DUR+0.4);
@@ -504,9 +619,26 @@ function fmt(n){
 const fmtI = n => fmt(Math.floor(n));
 
 /* ====================== 演出（パーティクル・音） ====================== */
-const MAXP = 2600;
+let MAXP = 2600;                   // パーティクルの上限（軽量モードでは少なく）
+let LOW = false;                   // 軽量モード
+// 空間グリッド：敵を80pxのマスに振り分け、範囲検索を近くのマスだけで済ませる（敵が1000体いても軽く）
+const GC = 80, GCOLS = Math.ceil(W/GC), GROWS = Math.ceil(H/GC), GRID = Array.from({length:GCOLS*GROWS},()=>[]);
+function buildGrid(){
+  for(const c of GRID) c.length = 0;
+  for(const a of R.aliens){
+    if(a.dead) continue;
+    const cx = Math.max(0, Math.min(GCOLS-1, Math.floor(a.x/GC))), cy = Math.max(0, Math.min(GROWS-1, Math.floor(a.y/GC)));
+    GRID[cy*GCOLS+cx].push(a);
+  }
+}
+function near(x, y, r, fn){
+  const x0 = Math.max(0, Math.floor((x-r)/GC)), x1 = Math.min(GCOLS-1, Math.floor((x+r)/GC));
+  const y0 = Math.max(0, Math.floor((y-r)/GC)), y1 = Math.min(GROWS-1, Math.floor((y+r)/GC));
+  for(let cy=y0; cy<=y1; cy++) for(let cx=x0; cx<=x1; cx++){ const c = GRID[cy*GCOLS+cx]; for(let i=0;i<c.length;i++) fn(c[i]); }
+}
 function burst(x,y,color,n,sp,life,size,g){
   if(R.pt.length>MAXP) return;
+  if(LOW) n = Math.ceil(n*0.2);
   n = Math.min(n, MAXP-R.pt.length);
   for(let i=0;i<n;i++){
     const a = Math.random()*6.2832, s = sp*(0.25+Math.random()*0.75);
@@ -514,7 +646,7 @@ function burst(x,y,color,n,sp,life,size,g){
   }
 }
 function ring(x,y,r,color,life,w){ if(R.fx.length<300) R.fx.push({k:"ring",x,y,r,life,max:life,color,w:w||3}); }
-function shake(a){ R.shake = Math.max(R.shake, a); }
+function shake(a){ if(!LOW) R.shake = Math.max(R.shake, a); }
 function bigText(t,color,life){ R.fx.push({k:"big",t,color:color||"#fde68a",life:life||1.4,max:life||1.4}); }
 
 let AC = null, sndAt = {};
@@ -565,6 +697,10 @@ function sfx(name){
 /* ====================== ウェーブ ====================== */
 function planWave(w){
   const n = waveN(w), q = [];
+  if(w===FINAL_DAY && !R.finalDown){                 // 最後の日：ラスボスと護衛
+    q.push("final"); for(let i=0;i<150;i++) q.push(Math.random()<0.5 ? "grunt" : "scout");
+    return q;
+  }
   const mix = [
     ["tank",  w<5 ? 0 : Math.min(0.22, 0.015*w)],
     ["drone", w<4 ? 0 : Math.min(0.20, 0.08+0.004*w)],
@@ -580,11 +716,11 @@ function planWave(w){
     for(const [t,p] of mix){ if(r<p){ type = t; break; } r -= p; }
     q.push(type);
   }
-  if(w>=8 && w%5===3){             // 宇宙空母（WAVE 8, 13, 18 …）
+  if(w>=8 && w%5===3){             // 宇宙空母（DAY 8, 13, 18 …）
     const nc = w<40 ? 1 : w<80 ? 2 : 3;
     for(let i=0;i<nc;i++) q.splice(Math.floor(Math.random()*q.length), 0, "carrier");
   }
-  if(w%5===0){                     // 5WAVEごとにボス（11種を順番に。後半は複数体）
+  if(w%5===0){                     // 5日ごとにボス（11種を順番に。後半は複数体）
     const bi = (w/5-1)%BOSS_ORDER.length, nb = 1 + (w>=60?1:0) + (w>=100?1:0);
     for(let j=0;j<nb;j++) q.push(BOSS_ORDER[(bi+j)%BOSS_ORDER.length]);
   }
@@ -592,12 +728,16 @@ function planWave(w){
 }
 function startWave(){
   R.queue = planWave(S.wave); R.spawnT = 0; R.spawnI = 8/R.queue.length;
+  if(BF.interest) S.gold += S.gold*0.03;                 // 投資家：利子
+  if(S.wave===FINAL_DAY && !R.finalDown){ bigText("DAY 366 ― 最後の日","#ff2d55",3); shake(12); }
+  else R.fx.push({k:"day", t:"🌅 DAY "+S.wave+(S.wave<FINAL_DAY ? "　あと"+(FINAL_DAY-1-S.wave)+"日" : ""), life:1.8, max:1.8});
   if(S.wave>S.runBest) S.runBest = S.wave;
   if(S.wave>S.best) S.best = S.wave;
 }
 function spawn(type){
   const A = ALIENS[type];
   if(A.info && !S.seen[type]){ S.seen[type] = 1; toast(`NEW! ${A.boss?"ボス ":""}${A.name} ― ${A.info}`); }
+  if(type==="final"){ spawnAt("final", W/2, -70); bigText("⚠ 星喰らい 降臨","#ff2d55",3); shake(25); sfx("boss"); sfx("nuke"); return; }
   if(type==="twin"){                        // 双子艦は2体1組で現れる
     const x = 260+Math.random()*(W-520);
     const a = spawnAt("twin", x-110, -4), b = spawnAt("twin", x+110, -4);
@@ -631,6 +771,7 @@ function spawnAt(type, x, y, hpOver){
   if(type==="phantom"){ al.bt = 3; al.ck = 0; }
   if(type==="cloak"){ al.cc = Math.random()*3.5; al.ck = 0; }
   if(type==="emp") al.et = 4;
+  if(type==="final"){ al.ft = 4; al.st = 3; al.phase = 0; al.t = 0; al.vx = 0; }
   R.aliens.push(al);
   return al;
 }
@@ -689,6 +830,7 @@ function onDeath(a){
     const p = a.pair; p.hp = Math.min(p.maxhp, p.hp + p.maxhp*0.5); p.rage = true;
     ring(p.x,p.y,90,"#f87171",0.6,4); bigText("双子艦が激昂！","#fca5a5",1.2);
   }
+  if(a.type==="final"){ R.finalDown = true; R.clearT = 2.5; R.slowT = 2; R.white = 1; bigText("星喰らい 撃破！！！","#fde68a",3); }
   if(A.boss){
     S.runBoss++;
     if(Math.random()<CHEST_BOSS) R.chests.push({x:a.x, y:a.y, t:0});
@@ -696,8 +838,9 @@ function onDeath(a){
     R.chests.push({x:a.x, y:a.y, t:0});
   }
 }
-function hit(a, dmg, aoe){
+function hit(a, dmg, aoe, quiet){
   if(a.dead) return;
+  if(BF.chill && !quiet){ a.slowT = Math.max(a.slowT, 1); a.slow = Math.max(a.slow||0, BF.ice2 ? 0.4 : 0.25); }   // 絶対零度
   if(a.type==="emissile") dmg *= bM("aa");                 // 迎撃スキル：敵ミサイルへの与ダメージ
   if(aoe && a.type==="shell") dmg *= 0.5;                   // 甲殻兵は爆発に強い
   if(R.grav.length && a.type!=="gravity"){                  // 重力核の近くの敵はダメージ半減
@@ -715,21 +858,21 @@ function hit(a, dmg, aoe){
     killFx(a, g);
     onDeath(a);
     // 誘爆：倒した敵が爆発して周囲を巻き込む。威力は「トドメの一撃で実際に削った体力」の60%（オーバーキル分は数えない）
-    const t = a.type, p = t==="scout"||t==="drone"||t==="mini" ? 0.10 : t==="grunt" ? 0.15 : t==="emissile" ? 0 : 1;
+    const t = a.type, p = t==="emissile" ? 0 : BF.fireChain ? 1 : t==="scout"||t==="drone"||t==="mini" ? 0.10 : t==="grunt" ? 0.15 : 1;
     if(R.chainQ.length<60 && Math.random()<p)
-      R.chainQ.push({x:a.x,y:a.y,r:t==="tank"||t==="shell"?60:isBig(t)?140:34,dmg:Math.min(dmg, a.hp+dmg)*0.6});
-  }else if(R.pt.length<MAXP-4){
+      R.chainQ.push({x:a.x,y:a.y,r:t==="tank"||t==="shell"?60:isBig(t)?140:34,dmg:Math.min(dmg, a.hp+dmg)*0.6*(BF.fireChain?2:1)});
+  }else if(!quiet && R.pt.length<MAXP-4){
     R.pt.push({x:a.x,y:a.y,vx:(Math.random()-.5)*160,vy:(Math.random()-.5)*160,life:0.2,max:0.2,size:2,c:"#ffffff",g:0});
   }
 }
 // 範囲爆発（ミサイル・レーザーの命中点など）
 function blast(x,y,r,dmg,skip,color,once){
   const r2 = r*r;
-  for(const a of R.aliens){
-    if(a.dead || a===skip || (once && once.has(a))) continue;
+  near(x, y, r, a=>{
+    if(a.dead || a===skip || (once && once.has(a))) return;
     const dx = a.x-x, dy = a.y-y;
     if(dx*dx+dy*dy<=r2){ if(once) once.add(a); hit(a,dmg,true); }
-  }
+  });
   if(R.fx.length<260) R.fx.push({k:"boom",x,y,r,life:0.32,max:0.32,color:color||"#fb923c"});
   if(R.pt.length<MAXP-20){ const k = Math.min(3, r/60); burst(x,y,color||"#fdba74",Math.floor(9*k),240+r*1.2,0.45,3,90); burst(x,y,"#ffffff",Math.floor(3*k),280+r*1.2,0.2,2,0); }
 }
@@ -751,11 +894,11 @@ function updBurst(t, st, T, dt){
   while(b.timer<=0 && b.n>0){
     b.n--; b.timer += 0.06;
     let cand = null, k = 0;
-    for(const a of R.aliens){
-      if(a.dead || a.ck>0) continue;
+    near(t.x, t.y, st.range, a=>{
+      if(a.dead || a.ck>0) return;
       const dx = a.x-t.x, dy = a.y-t.y;
       if(dx*dx+dy*dy<=r2){ k++; if(Math.random()<1/k) cand = a; }
-    }
+    });
     if(!cand){ b.n = 0; break; }
     const ang = -Math.PI/2 + (Math.random()-.5)*2.6, sp = MISSILE_V0;
     R.bullets.push({m:1,x:t.x,y:t.y,px:t.x,py:t.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,spd:sp,tgt:cand,dmg:st.dmg,splash:missileSplash(),life:8,
@@ -769,7 +912,7 @@ function updMissile(b, dt){
   b.life -= dt;
   if(!b.tgt || b.tgt.dead){
     let bd = 1e9, bt = null;
-    for(const a of R.aliens){ if(a.dead || a.ck>0) continue; const dx = a.x-b.x, dy = a.y-b.y, q = dx*dx+dy*dy; if(q<bd){ bd = q; bt = a; } }
+    near(b.x, b.y, 320, a=>{ if(a.dead || a.ck>0) return; const dx = a.x-b.x, dy = a.y-b.y, q = dx*dx+dy*dy; if(q<bd){ bd = q; bt = a; } });
     b.tgt = bt;
   }
   b.spd = Math.min(MISSILE_VMAX, b.spd + MISSILE_ACC*dt);
@@ -832,11 +975,11 @@ function updBeam(t, st, dt){
   const far = b.tgt && ((b.tgt.x-t.x)**2+(b.tgt.y-t.y)**2 > r2*1.3);
   if(!b.tgt || b.tgt.dead || b.tgt.ck>0 || far){
     b.tgt = null; let bh = -1;
-    for(const a of R.aliens){
-      if(a.dead || a.ck>0) continue;
+    near(t.x, t.y, st.range, a=>{
+      if(a.dead || a.ck>0) return;
       const dx = a.x-t.x, dy = a.y-t.y;
       if(dx*dx+dy*dy<=r2 && a.hp>bh){ bh = a.hp; b.tgt = a; }
-    }
+    });
   }
   if(b.tgt){
     let d = Math.atan2(b.tgt.y-t.y, b.tgt.x-t.x) - t.ang;
@@ -865,6 +1008,38 @@ function updBeam(t, st, dt){
   if(b.t >= RAIL_DUR) t.beam = null;
 }
 
+// ラスボス「星喰らい」：上空にとどまり、ミサイルの雨と眷属を呼び続ける。体力2/3・1/3でボスを呼び、シールドを張る
+function updFinal(a, dt){
+  a.t += dt;
+  if(a.y>=150){ a.y = 150; a.vy = 0; }
+  a.x = W/2 + Math.sin(a.t*0.35)*300;
+  const ph = a.hp/a.maxhp, enr = ph<0.33 ? 2 : ph<0.66 ? 1.5 : 1;
+  a.ft -= dt*enr;
+  if(a.ft<=0){ a.ft += 3; for(let i=0;i<8;i++) fireEnemyMissile({x:a.x+(Math.random()-.5)*180, y:a.y+30}, 2); sfx("launch"); }
+  a.st -= dt*enr;
+  if(a.st<=0 && R.aliens.length<1500){
+    a.st += 1.6;
+    const pool = ["grunt","scout","tank","drone","shell","slime","rusher","medic","cloak"];
+    for(let i=0;i<12;i++) spawnAt(pool[(Math.random()*pool.length)|0], a.x+(Math.random()-.5)*320, a.y+30);
+    burst(a.x,a.y+30,"#ff2d55",20,260,0.5,3,0);
+  }
+  const want = ph<0.33 ? 2 : ph<0.66 ? 1 : 0;
+  if(want>a.phase){
+    a.phase = want; a.shMax = a.maxhp*0.08; a.sh = a.shMax; a.nh = 0;
+    for(let j=0;j<2+want;j++) spawnAt(BOSS_ORDER[(Math.random()*BOSS_ORDER.length)|0], 150+Math.random()*(W-300), -10);
+    bigText(want===1 ? "星喰らいが怒り狂っている！" : "星喰らい 最終形態！","#ff2d55",2); shake(20); sfx("boss");
+  }
+}
+// 天罰：最も体力の多い敵5体へ天の光
+function smite(){
+  const top = R.aliens.filter(a=>!a.dead).sort((p,q)=>q.hp-p.hp).slice(0,5), d = avgTurretDmg()*40;
+  for(const a of top){
+    R.fx.push({k:"beam",x1:a.x,y1:-20,x2:a.x,y2:a.y,life:0.45,max:0.45,color:"#fde68a",w:8});
+    burst(a.x,a.y,"#fef3c7",16,300,0.4,3,0);
+    hit(a, d);
+  }
+  if(top.length) sfx("rail");
+}
 function step(dt){
   recount();
   S.gold += goldRate()*dt;
@@ -879,18 +1054,28 @@ function step(dt){
     if(!R.queue.length) R.waveT = 0;
   }else{
     R.waveT += dt;
-    if(R.waveT >= WAVE_GAP || (R.aliens.length===0 && R.waveT >= 1.0)){       // 前のWAVEを倒しきる前に次が来る
+    const hold = S.wave===FINAL_DAY && !R.finalDown;   // ラスボスを倒すまで次の日は来ない
+    if(!hold && (R.waveT >= WAVE_GAP || (R.aliens.length===0 && R.waveT >= 1.0))){       // 前の日の敵を倒しきる前に次が来る
       if(R.fresh) R.fresh = false; else S.wave++;
       startWave(); R.waveT = 0;
     }
   }
+
+  // ビルドの特殊効果：天罰・時間停止
+  if(BF.smite){ R.smT -= dt; if(R.smT<=0){ R.smT = BF.holy3 ? 4 : 8; smite(); } }
+  if(BF.timeStop){ R.tsT -= dt; if(R.tsT<=0){ R.tsT = BF.time3 ? 12.5 : 25; R.freeze = 2; bigText("⏱ 時間停止！","#c4b5fd",1); } }
+  if(R.freeze>0) R.freeze -= dt;
+  if(R.clearT>0){ R.clearT -= dt; if(R.clearT<=0) gameClear(); }
 
   // エイリアンの移動と特殊行動
   R.grav = R.aliens.filter(a=>a.type==="gravity" && !a.dead);
   for(const a of R.aliens){
     if(a.dead) continue;
     const A = ALIENS[a.type];
-    const k = (a.slowT>0 ? 1-a.slow : 1) * (a.dash ? 3 : a.rage ? 1.4 : 1);
+    if(a.burnT>0){ a.burnT -= dt; hit(a, a.burn*dt, false, true); if(a.dead) continue; }   // 焼夷弾の炎
+    if(R.freeze>0) continue;                                 // 時間停止
+    if(a.frz>0){ a.frz -= dt; continue; }                    // 核の冬で凍結
+    const k = (a.slowT>0 ? 1-a.slow : 1) * (a.dash ? 3 : a.rage ? 1.4 : 1) * (BF.iceAura ? 0.85 : 1);
     a.slowT -= dt;
     a.x += a.vx*k*dt; a.y += a.vy*k*dt;
     // 兵器を撃ってくる敵
@@ -936,15 +1121,17 @@ function step(dt){
     }else if(a.type==="regen"){                // 体力が自然回復
       if(a.hp<a.maxhp) a.hp = Math.min(a.maxhp, a.hp + a.maxhp*0.025*dt);
     }else if(a.type==="medic"){                // 周囲の敵を回復
-      for(const o of R.aliens){
-        if(o===a || o.dead || o.hp>=o.maxhp) continue;
+      near(a.x, a.y, MEDIC_R, o=>{
+        if(o===a || o.dead || o.hp>=o.maxhp) return;
         const dx = o.x-a.x, dy = o.y-a.y;
         if(dx*dx+dy*dy < MEDIC_R*MEDIC_R) o.hp = Math.min(o.maxhp, o.hp + o.maxhp*0.04*dt);
-      }
+      });
       if(R.pt.length<MAXP-4 && Math.random()<0.15) R.pt.push({x:a.x+(Math.random()-.5)*60,y:a.y+(Math.random()-.5)*60,vx:0,vy:-30,life:0.5,max:0.5,size:2.5,c:"#f9a8d4",g:0});
     }else if(a.type==="rusher"){               // 中盤から急加速
       if(!a.dash && a.y > H*0.4){ a.dash = true; burst(a.x,a.y,"#fdba74",8,160,0.3,2.5,0); }
       if(a.dash && R.pt.length<MAXP-4 && Math.random()<0.6) R.pt.push({x:a.x,y:a.y-4,vx:0,vy:-40,life:0.25,max:0.25,size:2.5,c:"#fb923c",g:0});
+    }else if(a.type==="final"){
+      updFinal(a, dt);
     }else if(a.type==="emp"){                  // EMPで周囲の砲台を止める
       a.et -= dt;
       if(a.et<=0 && a.y>20){
@@ -975,6 +1162,7 @@ function step(dt){
     }
   }
 
+  buildGrid();
   // 自動攻撃：カーソルの円内にいる敵を、中心に近い順に自動で撃つ（姿を消した敵にも当たる）
   const zone = (R.mouse && R.mouse.y < surfaceY(R.mouse.x)) ? {x:R.mouse.x, y:R.mouse.y} : null;
   const zr2 = orbR()*orbR(), tick = orbTick();
@@ -983,11 +1171,11 @@ function step(dt){
   while(zone && R.orbT<=0 && orbLoops++<4){
     R.orbT += tick;
     const inz = [];
-    for(const a of R.aliens){
-      if(a.dead) continue;
+    near(zone.x, zone.y, orbR(), a=>{
+      if(a.dead) return;
       const dx = a.x-zone.x, dy = a.y-zone.y, d2 = dx*dx+dy*dy;
       if(d2<=zr2) inz.push([d2,a]);
-    }
+    });
     if(inz.length){
       inz.sort((p,q)=>p[0]-q[0]);
       const n = Math.min(inz.length, orbTargets()), dmg = orbDmg(), k0 = R.kills;
@@ -996,6 +1184,14 @@ function step(dt){
         if(R.pt.length<MAXP-4) R.pt.push({x:a.x,y:a.y,vx:(Math.random()-.5)*120,vy:(Math.random()-.5)*120,life:0.15,max:0.15,size:2,c:"#bae6fd",g:0});
         if(i<3 && R.fx.length<280) R.fx.push({k:"zap",x1:zone.x,y1:zone.y,x2:a.x,y2:a.y,life:0.08,max:0.08});
         hit(a, dmg);
+        if(BF.orbChain){                                  // 帯電フィールド：近くの2体へ連鎖
+          let c = 0;
+          near(a.x, a.y, 110, o=>{
+            if(c>=2 || o===a || o.dead) return;
+            c++; hit(o, dmg*0.5);
+            if(R.fx.length<280 && Math.random()<0.3) R.fx.push({k:"zap",x1:a.x,y1:a.y,x2:o.x,y2:o.y,life:0.08,max:0.08});
+          });
+        }
       }
       sfx("orb"); multiKill(zone.x,zone.y,k0);
     }
@@ -1010,12 +1206,13 @@ function step(dt){
     if(t.burst) updBurst(t, st, T, dt);
     if(t.sweep) updSweep(t, st, T, dt);
     if(t.beam){ updBeam(t, st, dt); continue; }
+    if(t.cd>0) continue;                                // 再装填中は狙いを付け直さない（軽量化）
     const reach = t.type==="laser" ? st.range*sweepReach() : st.range;
     let tgt = null, emT = null, hpT = null, r2 = reach*reach;
     const isGun = t.type==="gun", multi = isGun && TC.gun>=TIER_N;
     const inr = multi ? [] : null, ems = isGun ? [] : null;
-    for(const a of R.aliens){
-      if(a.dead || a.ck>0) continue;                    // 姿を消している敵は狙えない
+    near(t.x, t.y, reach, a=>{
+      if(a.dead || a.ck>0) return;                      // 姿を消している敵は狙えない
       const dx = a.x-t.x, dy = a.y-t.y;
       if(dx*dx+dy*dy <= r2){
         if(!tgt || a.y>tgt.y) tgt = a;
@@ -1023,7 +1220,7 @@ function step(dt){
         if(!hpT || a.hp>hpT.hp) hpT = a;
         if(multi && inr.length<160) inr.push(a);
       }
-    }
+    });
     if(isGun && emT) tgt = emT;                       // 機関砲は敵ミサイルを最優先で迎撃する
     if(t.type==="rail" && hpT) tgt = hpT;              // レールガンは最も体力のある敵を狙う
     if(!tgt) continue;
@@ -1039,7 +1236,7 @@ function step(dt){
         const tg = w===0 ? tgt : (pool && pool.length ? pool[(Math.random()*pool.length)|0] : tgt);
         const off = (w-(ways-1)/2)*5;
         const bx = mx+nx*off, by = my+ny*off;
-        R.bullets.push({x:bx,y:by,px:bx,py:by,tgt:tg,tx:tg.x,ty:tg.y,dmg:st.dmg*(tg.type==="emissile"?GUN_AA:1),splash:0,sp:760,color:T.color});
+        R.bullets.push({x:bx,y:by,px:bx,py:by,tgt:tg,tx:tg.x,ty:tg.y,dmg:st.dmg*(tg.type==="emissile"?GUN_AA:1),splash:0,sp:760,color:T.color,gun:1});
       }
       burst(mx,my,"#bbf7d0",2+ways,140+ways*15,0.12,2.5,0);
     }else if(t.type==="missile"){
@@ -1056,11 +1253,11 @@ function step(dt){
       const used = new Set([tgt]); let cur = tgt, d = st.dmg;
       for(let j=0;j<jumps;j++){
         let best = null, bd = 130*130;
-        for(const a of R.aliens){
-          if(a.dead || a.ck>0 || used.has(a)) continue;
+        near(cur.x, cur.y, 130, a=>{
+          if(a.dead || a.ck>0 || used.has(a)) return;
           const dx = a.x-cur.x, dy = a.y-cur.y, q = dx*dx+dy*dy;
           if(q<bd){ bd = q; best = a; }
-        }
+        });
         if(!best) break;
         d *= 0.88; hit(best, d*cm); used.add(best); pts.push([best.x,best.y]); cur = best;
       }
@@ -1082,7 +1279,10 @@ function step(dt){
     const dx = b.tx-b.x, dy = b.ty-b.y, dist = Math.hypot(dx,dy), mv = b.sp*dt;
     if(dist<=mv+3){
       b.done = true;
-      if(b.tgt && !b.tgt.dead) hit(b.tgt,b.dmg);
+      if(b.tgt && !b.tgt.dead){
+        const a = b.tgt; hit(a,b.dmg);
+        if(BF.burn && b.gun && !a.dead){ a.burn = Math.max(a.burn||0, b.dmg*0.4); a.burnT = 3; }   // 焼夷弾
+      }
     }else{ b.x += dx/dist*mv; b.y += dy/dist*mv; }
   }
   R.bullets = R.bullets.filter(b=>!b.done);
@@ -1128,7 +1328,7 @@ function step(dt){
       burst(n.x,n.y,"#ffd27a",260,760,1.4,5,200); burst(n.x,n.y,"#ffffff",140,900,0.7,3.5,0); burst(n.x,n.y,"#fb923c",160,520,1.6,5,300);
       R.white = 0.55; shake(30); sfx("nuke");
       const k0 = R.kills;
-      for(const a of R.aliens){ const dx = a.x-n.x, dy = a.y-n.y; if(!a.dead && dx*dx+dy*dy<=r2) hit(a,dmg); }
+      for(const a of R.aliens){ const dx = a.x-n.x, dy = a.y-n.y; if(!a.dead && dx*dx+dy*dy<=r2){ hit(a,dmg); if(BF.nukeFreeze) a.frz = 3; } }
       bigText("☢ 核ミサイル着弾！","#fed7aa",1.4); R.slowT = Math.max(R.slowT,0.7);
       const nk = R.kills-k0; if(nk>=3) R.fx.push({k:"mk",x:n.x,y:n.y-60,t:nk+" KILL!!",life:1.4,max:1.4,n:nk+40});
     }
@@ -1231,9 +1431,9 @@ function die(){
   if(R.dead) return;
   R.dead = true; S.popF = 0;
   const g = soulGain();
-  $("deadInfo").innerHTML = `<p>宇宙人の侵攻により、地球の人口は0になった…</p>
+  $("deadInfo").innerHTML = `<p>宇宙人の侵攻により、地球の人口は0になった…<br>人類は <b>DAY ${S.wave}</b> に滅亡した。</p>
     <div class="card" style="text-align:left;display:inline-block;min-width:260px">
-      到達 WAVE：<b>${S.runBest}</b>（全期間最高 ${S.best}）<br>倒したボス：<b>${S.runBoss}</b> 体<br>
+      到達 DAY：<b>${S.runBest}</b>（全期間最高 ${S.best}）<br>倒したボス：<b>${S.runBoss}</b> 体<br>
       獲得する転生pt：<b style="color:#c4b5fd;font-size:18px">+${g}</b></div>
     <p class="note">転生スキルツリーで永続強化して、次の人生でさらに先へ進みましょう。<br>エピックアイテムは転生しても消えません。</p>`;
   $("deadOv").classList.add("open");
@@ -1248,12 +1448,13 @@ function rebirth(){
 function resetField(){
   R.aliens=[]; R.bullets=[]; R.queue=[]; R.nukes=[]; R.pt=[]; R.fx=[]; R.chainQ=[]; R.coins=[]; R.chests=[]; R.combo=0;
   R.fresh = true; R.waveT = -2; R.sel = null; R.place = null; R.nukeCd = 0; panelKey = "";
+  R.finalDown = false; R.clearT = 0; R.freeze = 0; R.smT = 8; R.tsT = 25;
 }
 function newRun(){
   recalcBonus();
   const w0 = startWaveOf();
   Object.assign(S, {gold:START_GOLD + bA("startGold") + (w0>1 ? warpGold(w0) : 0), turrets:[], maxT:START_MAXT + bA("startT"),
-                    popF:1, wave:w0, runStart:w0, runBest:w0, runBoss:0, orb:{d:0,r:0,s:0}});
+                    popF:1, wave:w0, runStart:w0, runBest:w0, runBoss:0, runTime:0, orb:{d:0,r:0,s:0}});
   resetField(); recount();
 }
 $("deadGo").onclick = ()=>{ $("deadOv").classList.remove("open"); R.dead = false; rebirth(); openTree(); };
@@ -1292,8 +1493,8 @@ function alignTurrets(){
 }
 function buyTurret(type, x, y){
   const T = TOWERS[type], c = buildCost(type);
-  if(S.best<T.unlock){ toast(`WAVE ${T.unlock} に到達すると解放されます`, true); return false; }
-  if(S.turrets.length>=S.maxT){ toast("砲台の設置上限です。「設置上限を拡張」してください", true); return false; }
+  if(S.best<T.unlock){ toast(`DAY ${T.unlock} に到達すると解放されます`, true); return false; }
+  if(S.turrets.length>=maxT()){ toast("砲台の設置上限です。「設置上限を拡張」してください", true); return false; }
   if(S.gold<c){ toast("金が足りません", true); return false; }
   S.gold -= c;
   if(x===undefined){ const p = autoPlace(); x = p.x; y = p.y; }
@@ -1321,6 +1522,13 @@ function poly(x,y,n,r,rot){
 }
 function drawBoss(a, A, tm){
   const s = A.size, fl = a.fl>0;
+  if(A.final){                                              // ラスボスの禍々しいオーラ
+    const g = ctx.createRadialGradient(a.x,a.y,s*0.5,a.x,a.y,s*3);
+    g.addColorStop(0,"rgba(255,45,85,.45)"); g.addColorStop(1,"rgba(255,45,85,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(a.x,a.y,s*3,0,7); ctx.fill();
+    ctx.strokeStyle = "rgba(255,120,150,"+(0.4+0.3*Math.sin(tm*3))+")"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(a.x,a.y,s*1.6+Math.sin(tm*2)*6,0,7); ctx.stroke();
+  }
   ctx.save(); ctx.translate(a.x,a.y);
   if(a.ck>0) ctx.globalAlpha = 0.3;
   ctx.shadowColor = A.color; ctx.shadowBlur = 24; ctx.fillStyle = fl ? "#ffffff" : A.color;
@@ -1343,7 +1551,7 @@ function drawBoss(a, A, tm){
     ctx.strokeStyle = "rgba(129,140,248,.35)"; ctx.lineWidth = 1.5; ctx.setLineDash([6,6]);
     ctx.beginPath(); ctx.arc(a.x,a.y,GRAV_R,tm,tm+6.2832); ctx.stroke(); ctx.setLineDash([]);
   }
-  const w = 64;
+  const w = A.final ? 260 : 64;
   ctx.fillStyle = "#000"; ctx.fillRect(a.x-w/2,a.y-s-14,w,5);
   ctx.fillStyle = "#4ade80"; ctx.fillRect(a.x-w/2,a.y-s-14,w*Math.max(0,a.hp/a.maxhp),5);
   if(a.shMax){ ctx.fillStyle = "#60a5fa"; ctx.fillRect(a.x-w/2,a.y-s-18,w*Math.max(0,a.sh/a.shMax),3); }
@@ -1355,7 +1563,7 @@ function draw(){
   if(R.shake>0) ctx.translate((Math.random()-.5)*R.shake, (Math.random()-.5)*R.shake);
   ctx.fillStyle = "#050810"; ctx.fillRect(-40,-40,W+80,H+80);
   ctx.fillStyle = "#9fb4d8";
-  STARS.forEach(s=>{ ctx.globalAlpha = .3+.25*Math.sin(tm*1.1+s[0]); ctx.fillRect(s[0],s[1],s[2],s[2]); });
+  if(!LOW) STARS.forEach(s=>{ ctx.globalAlpha = .3+.25*Math.sin(tm*1.1+s[0]); ctx.fillRect(s[0],s[1],s[2],s[2]); });
   ctx.globalAlpha = 1;
 
   // 地球
@@ -1410,7 +1618,8 @@ function draw(){
     const A = ALIENS[a.type];
     if(a.fl>0) a.fl -= 0.016;
     if(A.boss){ drawBoss(a, A, tm); continue; }
-    ctx.fillStyle = a.fl>0 ? "#ffffff" : a.slowT>0 ? "#7dd3fc" : A.color;
+    ctx.fillStyle = a.fl>0 ? "#ffffff" : a.burnT>0 ? "#fb923c" : a.slowT>0 ? "#7dd3fc" : A.color;
+    if(LOW && a.type!=="carrier" && a.type!=="emissile"){ const s = A.size+0.5; ctx.fillRect(a.x-s,a.y-s,2*s,2*s); continue; }   // 軽量：四角で描く
     if(a.ck>0) ctx.globalAlpha = 0.22;
     if(a.type==="carrier"){ ctx.shadowColor = A.color; ctx.shadowBlur = 24; }
     if(a.type==="drone"){                                    // 菱形（進行方向に向く）
@@ -1527,6 +1736,8 @@ function draw(){
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
+    }else if(f.k==="boom" && LOW){
+      ctx.globalAlpha = p*0.45; ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,7); ctx.fill(); ctx.globalAlpha = 1;
     }else if(f.k==="boom"){
       const gr = ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r*(1.3-p*.4));
       gr.addColorStop(0,"rgba(255,255,255,"+(.9*p)+")"); gr.addColorStop(.4,f.color); gr.addColorStop(1,"rgba(0,0,0,0)");
@@ -1565,6 +1776,10 @@ function draw(){
   for(const f of R.fx){
     const p = f.life/f.max;
     if(f.k==="txt"){ ctx.globalAlpha = Math.min(1,p*1.5); ctx.fillStyle = "#fbbf24"; ctx.font = "bold 12px sans-serif"; ctx.fillText(f.t,f.x,f.y-(1-p)*18); ctx.globalAlpha = 1; }
+    else if(f.k==="day"){
+      ctx.globalAlpha = Math.min(1,p*2); ctx.font = "bold 22px sans-serif"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.6)";
+      ctx.strokeText(f.t, W/2, 104); ctx.fillStyle = "#fde68a"; ctx.fillText(f.t, W/2, 104); ctx.globalAlpha = 1;
+    }
     else if(f.k==="mk"){
       const q = 1-p, sc = (1+Math.min(1.4,f.n/40))*(1+Math.max(0,0.5-q*2));
       ctx.save(); ctx.translate(f.x, f.y-30-q*40); ctx.scale(sc,sc); ctx.globalAlpha = Math.min(1,p*2);
@@ -1600,11 +1815,12 @@ function draw(){
   }
   ctx.restore();   // シェイク終了
 
+  if(R.freeze>0){ ctx.fillStyle = "rgba(196,181,253,.13)"; ctx.fillRect(0,0,W,H); }
   if(R.white>0){ ctx.fillStyle = "rgba(255,255,255,"+Math.min(1,R.white*1.6)+")"; ctx.fillRect(0,0,W,H); }
 
   // HUD
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#e6edf7"; ctx.font = "bold 18px sans-serif"; ctx.fillText("WAVE "+S.wave+(S.wave%5===0?"  ⚠ BOSS":""),14,28);
+  ctx.fillStyle = "#e6edf7"; ctx.font = "bold 18px sans-serif"; ctx.fillText("DAY "+S.wave+(S.wave===FINAL_DAY && !R.finalDown ? "  ⚠ 最後の日" : S.wave%5===0 ? "  ⚠ BOSS" : ""),14,28);
   let inc = 0; for(const a of R.aliens) if(a.type==="emissile") inc++;
   if(inc>0){
     ctx.save(); ctx.globalAlpha = 0.65+0.35*Math.sin(performance.now()/90); ctx.textAlign = "center";
@@ -1623,7 +1839,8 @@ function draw(){
     ctx.fillText("BOSS "+A.name+"　"+A.info, W/2, by+26);
     ctx.textAlign = "left";
   }
-  ctx.fillStyle = "#8b9bb8"; ctx.font = "12px sans-serif"; ctx.fillText("残り敵: "+(R.aliens.length+R.queue.length),14,47);
+  ctx.fillStyle = "#8b9bb8"; ctx.font = "12px sans-serif";
+  ctx.fillText("残り敵: "+(R.aliens.length+R.queue.length)+(S.wave<FINAL_DAY ? "　／　DAY 366 まで あと"+(FINAL_DAY-S.wave)+"日" : ""),14,47);
   if(R.combo>=5){
     const sc = 1 + Math.min(1.2, R.combo/150), pulse = 1 + 0.12*Math.max(0, R.comboT-1.3)*8;
     ctx.save(); ctx.translate(14, 92); ctx.scale(sc*pulse, sc*pulse);
@@ -1641,6 +1858,8 @@ function draw(){
   ctx.fillStyle = "#e6edf7"; ctx.font = "12px sans-serif"; ctx.textAlign = "right";
   ctx.fillText("世界人口 "+popNow().toFixed(1)+"億 / "+popMax().toFixed(0)+"億",W-14,46);
   ctx.fillStyle = "#8b9bb8"; ctx.font = "11px sans-serif"; ctx.fillText("人口はほぼ回復しない。0になると人類滅亡→転生", W-14, 62);
+  ctx.textAlign = "left"; ctx.fillStyle = "#475569"; ctx.font = "10px sans-serif";
+  ctx.fillText("FPS "+Math.round(R.fps)+(LOW?"（軽量モード）":""), 14, H-8);
   if(S.speed===0 && !R.dead){
     ctx.textAlign = "center"; ctx.font = "bold 28px sans-serif"; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.7)";
     ctx.strokeText("⏸ 一時停止中（Space で再開）", W/2, H/2-60); ctx.fillStyle = "#e6edf7"; ctx.fillText("⏸ 一時停止中（Space で再開）", W/2, H/2-60);
@@ -1701,8 +1920,8 @@ function setSpeed(s){
 document.querySelectorAll("#speed button").forEach(b=>b.addEventListener("click",()=>setSpeed(Number(b.dataset.s))));
 document.addEventListener("keydown", e=>{
   if(e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-  if(e.key==="Escape"){ if(R.ov==="sk") closeTree(); else if(R.ov==="col") closeCol(); return; }
-  if(R.ov || R.rou || R.dead) return;
+  if(e.key==="Escape"){ if(R.ov==="sk") closeTree(); else if(R.ov==="col") closeCol(); else if(R.ov==="bd") closeBuild(); return; }
+  if(R.ov || R.rou || R.dead || R.cleared) return;
   if(e.code==="Space"){ e.preventDefault(); setSpeed(S.speed===0 ? (R.prevSpeed||1) : 0); }
   else if(e.key==="1") setSpeed(1);
   else if(e.key==="2") setSpeed(2);
@@ -1742,18 +1961,18 @@ function buildUnits(){
 function updUnits(){
   recount();
   TYPES.forEach(k=>{
-    const T = TOWERS[k], n = TC[k], ok = S.best>=T.unlock, c = buildCost(k), full = S.turrets.length>=S.maxT;
+    const T = TOWERS[k], n = TC[k], ok = S.best>=T.unlock, c = buildCost(k), full = S.turrets.length>=maxT();
     $("uc_"+k).textContent = "×"+n;
     $("ut_"+k).textContent = n>=TIER_N ? "★ 進化 "+tierN(k) : "";
     $("ub_"+k).style.width = (n%TIER_N/TIER_N*100)+"%";
     $("us_"+k).textContent = unitStatText(k);
     const btn = $("ubuy_"+k);
-    btn.innerHTML = ok ? `＋1基 購入${R.place?"（選択地点）":"（最前線に自動配置）"}　${costHtml(c)}　<span class="note">次の進化まであと ${TIER_N-n%TIER_N}基</span>` : `🔒 WAVE ${T.unlock} で解放`;
+    btn.innerHTML = ok ? `＋1基 購入${R.place?"（選択地点）":"（最前線に自動配置）"}　${costHtml(c)}　<span class="note">次の進化まであと ${TIER_N-n%TIER_N}基</span>` : `🔒 DAY ${T.unlock} で解放`;
     btn.classList.toggle("no", !ok || full || S.gold<c);
   });
   const ec = maxTCost();
   $("uExpandC").innerHTML = costHtml(ec);
-  $("uExpandD").textContent = `砲台の設置上限（現在 ${S.turrets.length} / ${S.maxT}）を+1します`;
+  $("uExpandD").textContent = `砲台の設置上限（現在 ${S.turrets.length} / ${maxT()}）を+1します`;
   $("uExpand").classList.toggle("no", S.gold<ec);
 }
 function buildOrb(){
@@ -1780,16 +1999,16 @@ function updOrb(){
 function buildReb(){
   $("rebBox").innerHTML = `<div class="card" id="rebInfo" style="margin-bottom:6px"></div>
     <button class="btn" id="rebBtn">♻ 自ら転生する</button>
-    <div class="note" style="margin-top:4px">人口が0になると自動で転生します。行き詰まったら自ら転生してもかまいません（開始WAVEから5WAVE以上進むと可能）。</div>`;
+    <div class="note" style="margin-top:4px">人口が0になると自動で転生します。行き詰まったら自ら転生してもかまいません（開始DAYから5日以上進むと可能）。</div>`;
   $("rebBtn").onclick = ()=>{
-    if(!canRebirth()) return toast("開始WAVEから5WAVE以上進むと、自ら転生できます", true);
+    if(!canRebirth()) return toast("開始DAYから5日以上進むと、自ら転生できます", true);
     if(!confirm(`転生pt +${soulGain()} を獲得して、最初からやり直します。よろしいですか？\n（スキル・エピックアイテムは残ります）`)) return;
     rebirth(); openTree();
   };
 }
 const canRebirth = () => S.runBest >= S.runStart+5 && soulGain()>0;
 function updReb(){
-  $("rebInfo").innerHTML = `今の人生：最高 WAVE <b>${S.runBest}</b> ／ ボス撃破 <b>${S.runBoss}</b> 体<br>今転生すると 🔮 <b style="color:#c4b5fd">+${soulGain()}</b> 転生pt（転生回数 ${S.rebirths}）`;
+  $("rebInfo").innerHTML = `今の人生：最高 DAY <b>${S.runBest}</b> ／ ボス撃破 <b>${S.runBoss}</b> 体<br>今転生すると 🔮 <b style="color:#c4b5fd">+${soulGain()}</b> 転生pt（転生回数 ${S.rebirths}）`;
   $("rebBtn").classList.toggle("no", !canRebirth());
 }
 function renderPanel(){
@@ -1808,14 +2027,14 @@ function renderPanel(){
     return;
   }
   if(R.place){
-    const full = S.turrets.length>=S.maxT;
+    const full = S.turrets.length>=maxT();
     const flags = TYPES.map(k=>(S.best>=TOWERS[k].unlock?1:0)+""+(S.gold>=buildCost(k)?1:0)).join(",");
     sig = `P:${full}:${flags}:${S.maxT}:${S.turrets.length}`; if(sig===panelKey) return;
-    html = `<div class="note" style="margin-bottom:6px">${full?"⚠ 砲台の上限です。右の「設置上限を拡張」を使ってください。":"この場所に建てる砲台を選んでください（"+S.turrets.length+"/"+S.maxT+"）"}</div>
+    html = `<div class="note" style="margin-bottom:6px">${full?"⚠ 砲台の上限です。右の「設置上限を拡張」を使ってください。":"この場所に建てる砲台を選んでください（"+S.turrets.length+"/"+maxT()+"）"}</div>
       <div class="grid2">`+TYPES.map(k=>{
         const T = TOWERS[k], ok = S.best>=T.unlock, bc = buildCost(k);
         return `<button class="item ${ok&&!full&&S.gold>=bc?"":"no"}" data-k="${k}" style="margin:0">
-          <span class="nm" style="color:${T.color}">${T.name} <span class="note">×${TC[k]}</span></span><span class="ct">${ok?costHtml(bc):"🔒 WAVE"+T.unlock}</span>
+          <span class="nm" style="color:${T.color}">${T.name} <span class="note">×${TC[k]}</span></span><span class="ct">${ok?costHtml(bc):"🔒 DAY"+T.unlock}</span>
           <span class="ds">${T.desc}</span></button>`;
       }).join("")+'</div>';
     box.innerHTML = html; panelKey = sig;
@@ -1823,7 +2042,7 @@ function renderPanel(){
     return;
   }
   sig = `N:${S.turrets.length}`; if(sig===panelKey) return;
-  box.innerHTML = '<div class="note">右の部隊リストで「購入」すると<b>最前線に自動配置</b>されます（地球の上をクリックして場所を選ぶことも可能。置いた砲台はドラッグで動かせます）。<b>宇宙空間にカーソルを置くと円内の敵を自動攻撃</b>、<b>クリックで核ミサイル</b>（無料・再装填あり）。<b>5WAVEごとにボス</b>が現れ、倒すと<b>宝箱</b>を落とします。拾うとルーレットで<b>エピックアイテム</b>（永続強化）を獲得。人口はほぼ回復しないので、<b>敵ミサイルは必ず撃ち落とそう</b>（機関砲が得意）。</div>';
+  box.innerHTML = '<div class="note">右の部隊リストで「購入」すると<b>最前線に自動配置</b>されます（地球の上をクリックして場所を選ぶことも可能。置いた砲台はドラッグで動かせます）。<b>宇宙空間にカーソルを置くと円内の敵を自動攻撃</b>、<b>クリックで核ミサイル</b>（無料・再装填あり）。<b>5日ごとにボス</b>が現れ、倒すと<b>宝箱</b>を落とします。拾うとルーレットで<b>エピックアイテム</b>（永続強化）を獲得。人口はほぼ回復しないので、<b>敵ミサイルは必ず撃ち落とそう</b>（機関砲が得意）。</div>';
   panelKey = sig;
 }
 
@@ -1872,6 +2091,7 @@ function drawTree(){
   TN.forEach(n=>{
     const own = !!S.tree[n.id], open = nodeOpen(n), can = nodeCan(n), sel = skSel===n.id, col = SK_COL[n.k], god = n.t===TIER_W.length;
     const r = god ? 34 : 22;
+    if(n.skill && !god){ c.save(); c.translate(n.x,n.y); c.rotate(Math.PI/4); c.strokeStyle = "rgba(94,234,212,.7)"; c.lineWidth = 2; c.strokeRect(-r-4,-r-4,2*r+8,2*r+8); c.restore(); }
     c.beginPath(); c.arc(n.x,n.y,r,0,7);
     if(own){ c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 18; }
     else { c.fillStyle = open ? "#1a2348" : "#22283f"; c.shadowBlur = 0; }
@@ -1882,15 +2102,16 @@ function drawTree(){
     c.fillStyle = own ? "#0b1020" : open ? "#e6edf7" : "#6b7599"; c.font = "bold 12px sans-serif";
     c.fillText(own ? "✓" : fmt(n.cost), n.x, n.y+1);
     c.fillStyle = open||own ? "#f1f5f9" : "#6b7599"; c.font = "bold 12px sans-serif";
-    c.fillText(god ? "神化" : SK_NAME[n.k], n.x, n.y+r+13);
-    c.font = "11px sans-serif"; c.fillStyle = open||own ? "#cbd5e1" : "#59627f";
-    c.fillText(effText(n.k,n.v).replace(EFF[n.k],"").trim(), n.x, n.y+r+27);
+    c.fillText(god ? "神化" : n.skill ? SKI[n.skill].ic+" "+SKI[n.skill].name : SK_NAME[n.k], n.x, n.y+r+13);
+    c.font = "11px sans-serif"; c.fillStyle = n.skill ? "#5eead4" : open||own ? "#cbd5e1" : "#59627f";
+    c.fillText(n.skill && !god ? "装備スキル" : effText(n.k,n.v).replace(EFF[n.k],"").trim(), n.x, n.y+r+27);
   });
   requestAnimationFrame(drawTree);
 }
 function buyNode(n){
   if(!nodeCan(n)) return false;
   S.souls -= n.cost; S.tree[n.id] = true;
+  if(n.skill && validEquip().length<slotCount()) S.equip.push(n.skill);      // 空きスロットがあれば自動で装備
   recalcBonus(); panelKey = ""; save();
   if(n.t===TIER_W.length) toast("✦ 神化 ✦ ついに神へと至った！");
   else toast(`✨ ${n.name} を解放（${treeOwned()} / ${TN.length}）`);
@@ -1899,7 +2120,7 @@ function buyNode(n){
 // 今の効果の合計（掛け合わせた結果）
 function treeSummary(){
   const M = {}, A = {};
-  TN.forEach(n=>{ if(!S.tree[n.id]) return;
+  TN.forEach(n=>{ if(!S.tree[n.id] || n.k==="skill") return;
     if(SUMK[n.k]) A[n.k] = (A[n.k]||0)+n.v; else if(REDK[n.k]) M[n.k] = (M[n.k]||1)*(1-n.v); else M[n.k] = (M[n.k]||1)*(1+n.v); });
   const out = [];
   Object.keys(M).forEach(k=>out.push(`<span style="color:${SK_COL[k]}">${SK_NAME[k]}</span> ×${M[k]<100?M[k].toFixed(2):fmt(Math.round(M[k]))}`));
@@ -1918,7 +2139,8 @@ function renderSkInfo(){
   const n = TNI[skSel], owned = !!S.tree[n.id], open = nodeOpen(n), can = nodeCan(n);
   el.innerHTML = `<div class="note">【${REALMS[n.t-1]}${n.t>=TIER_W.length-1?"":"の域"}】第${n.t}段</div>
     <b style="font-size:16px;color:${SK_COL[n.k]}">${n.name}</b><br>
-    <div style="margin:6px 0;color:var(--text)">${effText(n.k,n.v)}${SUMK[n.k]?"":"（掛け合わせ）"}</div>
+    ${n.k==="skill" ? "" : `<div style="margin:6px 0;color:var(--text)">${effText(n.k,n.v)}${SUMK[n.k]?"":"（掛け合わせ）"}</div>`}
+    ${n.skill ? `<div class="card" style="margin:6px 0"><b>${SKI[n.skill].ic} ${SKI[n.skill].name}</b>　${tagHtml(SKI[n.skill].tags)}<div class="note">${SKI[n.skill].desc}</div><div class="note" style="color:#5eead4">解放すると 🧩ビルド で装備できます</div></div>` : ""}
     ${owned?'<div style="color:var(--warn)">解放済み ✓</div>':open?"":'<div class="note" style="color:var(--bad)">下の段のつながったスキルを先に解放してください</div>'}
     ${owned?"":`<button class="btn pri ${can?"":"no"}" id="skBuy" style="margin-top:8px">✨ 解放する（🔮${fmt(n.cost)}）</button>`}`;
   if(!owned) $("skBuy").onclick = ()=>{
@@ -1947,6 +2169,80 @@ function closeTree(){
 }
 $("skBtn").onclick = openTree;
 $("skClose").onclick = closeTree;
+
+/* ====================== ビルド ====================== */
+function renderBuild(){
+  const eq = validEquip(), n = slotCount(), own = new Set(ownedSkills()), tc = tagCounts();
+  $("bdSlots").innerHTML = Array.from({length:2+SLOT_TIERS.length},(_,i)=>{
+    if(i>=n) return `<div class="slot" style="opacity:.35;cursor:default"><div class="ic">🔒</div><div class="note">ツリー第${SLOT_TIERS[i-2]}段で解放</div></div>`;
+    const id = eq[i];
+    if(!id) return `<div class="slot"><div class="ic" style="opacity:.3">＋</div><div class="note">空き</div></div>`;
+    const sk = SKI[id];
+    return `<div class="slot on" data-id="${id}"><div class="ic">${sk.ic}</div><b style="font-size:12px">${sk.name}</b><div style="font-size:11px">${tagHtml(sk.tags)}</div></div>`;
+  }).join("");
+  $("bdNote").innerHTML = `装備スロット <b>${eq.length} / ${n}</b>　スキルは転生スキルツリーの「◇」の星で手に入り、いつでも付け替えられます。スロットはツリーの第${SLOT_TIERS.join("・")}段に到達すると増えます。`;
+  $("bdList").innerHTML = SKILLS.map(sk=>{
+    const node = TN.find(x=>x.skill===sk.id), has = own.has(sk.id), on = eq.includes(sk.id);
+    return `<div class="icard ${on?"eq":has?"own":"none"}" data-id="${sk.id}" style="cursor:${has?"pointer":"default"}"><div class="ic">${sk.ic}</div><div>
+      <b>${sk.name}${on?' <span style="color:#5eead4;font-size:12px">装備中</span>':""}</b><div style="font-size:11px">${tagHtml(sk.tags)}</div>
+      <div class="note">${sk.desc}</div>${has?"":`<div class="note" style="color:var(--bad)">未取得（ツリー第${node.t}段）</div>`}</div></div>`;
+  }).join("");
+  $("bdSyn").innerHTML = Object.keys(SYN).map(tg=>{
+    const T = TAGS[tg], c = tc[tg];
+    return `<div class="card syn"><b style="color:${T.c}">${T.ic} ${T.n}</b> <span style="font-family:var(--mono)">× ${c}</span>
+      ${SYN[tg].map(([need,txt])=>`<div class="lv ${c>=need?"on":""}">${c>=need?"✅":"・"} (${need}) ${txt}</div>`).join("")}</div>`;
+  }).join("");
+  document.querySelectorAll("#bdList .icard[data-id], #bdSlots .slot[data-id]").forEach(el=>{ el.onclick = ()=>toggleEquip(el.dataset.id); });
+}
+function toggleEquip(id){
+  if(!ownedSkills().includes(id)) return toast("まだ取得していないスキルです（転生スキルツリーで解放）", true);
+  const eq = validEquip(), i = eq.indexOf(id);
+  if(i>=0) eq.splice(i,1);
+  else{ if(eq.length>=slotCount()) return toast("スロットがいっぱいです。先にどれかを外してください", true); eq.push(id); }
+  S.equip = eq; recalcBonus(); panelKey = ""; save(); renderBuild();
+}
+function openBuild(){ R.ov = "bd"; $("bdOv").classList.add("open"); renderBuild(); }
+function closeBuild(){ R.ov = null; $("bdOv").classList.remove("open"); updHeader(); }
+$("bdBtn").onclick = openBuild;
+$("bdClose").onclick = closeBuild;
+
+/* ====================== クリア（DAY 366 のラスボス撃破） ====================== */
+const fmtTime = sec => { sec = Math.floor(sec); const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s2 = sec%60; return (h?h+"時間":"")+m+"分"+s2+"秒"; };
+function gameClear(){
+  if(R.cleared) return;
+  R.cleared = true; S.clears++;
+  const first = S.clears===1, rb = S.rebirths+1;
+  if(!S.clearBest || rb<S.clearBest) S.clearBest = rb;
+  S.souls += CLEAR_BONUS; S.soulsAll += CLEAR_BONUS;
+  $("clearInfo").innerHTML = `<p>星喰らいは倒れ、地球に平和が戻った。${first?"<br><b>はじめてのクリア、おめでとう！</b>":""}</p>
+    <div class="card" style="text-align:left;display:inline-block;min-width:280px">
+      <b>${rb}</b> 回目の人生でクリア（最少記録 ${S.clearBest} 回目）<br>
+      この人生のプレイ時間：<b>${fmtTime(S.runTime)}</b><br>
+      倒したボス：<b>${S.runBoss}</b> 体 ／ クリア回数：<b>${S.clears}</b><br>
+      クリアボーナス：🔮 <b style="color:#c4b5fd">+${CLEAR_BONUS}</b> 転生pt</div>
+    <p class="note">転生してさらに強くなり、もっと少ない転生回数・短い時間でのクリアを目指そう。<br>このまま DAY 367 以降のエンドレスに挑むこともできます。</p>`;
+  $("clearOv").classList.add("open"); sfx("fanfare"); save();
+}
+$("clearReb").onclick = ()=>{ $("clearOv").classList.remove("open"); R.cleared = false; rebirth(); openTree(); };
+$("clearGo").onclick = ()=>{ $("clearOv").classList.remove("open"); R.cleared = false; toast("エンドレスモード：どこまで生き延びられるか挑戦しよう"); };
+
+/* ====================== 画質（軽量モード） ====================== */
+function applyGfx(){
+  LOW = S.gfx==="low" || (S.gfx==="auto" && R.autoLow);
+  MAXP = LOW ? 500 : 2600;
+  if(LOW && R.pt.length>MAXP) R.pt.length = MAXP;
+  $("gfxBtn").textContent = "⚙ 画質："+({auto:"自動",high:"標準",low:"軽量"}[S.gfx])+(S.gfx==="auto" ? (LOW ? "（軽量中）" : "") : "");
+}
+$("gfxBtn").onclick = ()=>{
+  S.gfx = {auto:"high", high:"low", low:"auto"}[S.gfx] || "auto"; R.autoLow = false; applyGfx();
+  toast({auto:"画質：自動（重くなったら軽量モードに切り替えます）", high:"画質：標準", low:"画質：軽量（エフェクトを減らし、処理を軽くします）"}[S.gfx]);
+};
+// 軽量モードでは光のぼかし（shadowBlur）を使わない
+(function(){
+  if(typeof CanvasRenderingContext2D==="undefined") return;
+  const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "shadowBlur");
+  if(d && d.set) Object.defineProperty(ctx, "shadowBlur", {get(){ return d.get.call(this); }, set(v){ d.set.call(this, LOW ? 0 : v); }});
+})();
 
 /* ====================== コレクション ====================== */
 function renderCol(){
@@ -1981,11 +2277,12 @@ function updHeader(){
   $("hGold").textContent = fmtI(S.gold); $("hRate").textContent = "+"+fmt(goldRate())+"/s";
   $("hSoul").textContent = fmt(S.souls);
   $("hPop").textContent = popNow().toFixed(1)+"億";
-  $("hWave").textContent = S.wave+"（"+S.best+"）";
+  $("hWave").textContent = "DAY "+S.wave+"（最高 "+S.best+"）";
   const can = TN.some(nodeCan);
   $("skBtn").textContent = `♻ 転生スキルツリー ${treeOwned()}/${TN.length}`+(can?"（解放可能）":"");
   $("skBtn").classList.toggle("has", can);
   $("colBtn").textContent = `💎 コレクション ${kinds()}/${ITEMS.length}`;
+  $("bdBtn").textContent = `🧩 ビルド ${validEquip().length}/${slotCount()}`;
   $("nukeInfo").textContent = "☢ 核ミサイル："+(R.nukeCd<=0 ? "発射可能（宇宙をクリック）" : "再装填 "+Math.ceil(R.nukeCd)+"s");
 }
 
@@ -1994,18 +2291,26 @@ let lastTs = performance.now(), uiAcc = 0, saveAcc = 0;
 function frame(ts){
   let dt = Math.min((ts-lastTs)/1000, 0.1); lastTs = ts;
   const real = dt;
-  const paused = R.rou || R.dead || R.ov;              // ルーレット・滅亡画面・ツリー／コレクション表示中は止める
+  const paused = R.rou || R.dead || R.ov || R.cleared;  // ルーレット・滅亡／クリア画面・ツリー等の表示中は止める
   if(!paused){
     if(R.slowT>0){ R.slowT -= real; dt *= 0.3; }
-    for(let k=0;k<S.speed;k++) step(dt);
+    // 倍速のときは1フレームにまとめて進める（軽量モードでは1回の刻みを大きくして回数を減らす）
+    const total = dt*S.speed, maxStep = LOW ? 0.07 : 0.034, n = Math.min(8, Math.ceil(total/maxStep - 1e-9));
+    for(let k=0;k<n;k++) step(total/n);
+    if(S.speed>0) S.runTime += real;
     if(R.rouQ>0 && !R.dead) openRoulette();
   }
   draw();
+  R.fpsN++; R.fpsT += real;
+  if(R.fpsT>=3){
+    R.fps = R.fpsN/R.fpsT; R.fpsN = 0; R.fpsT = 0;
+    if(S.gfx==="auto" && !R.autoLow && R.fps<40 && !paused){ R.autoLow = true; applyGfx(); toast("処理が重くなってきたため、軽量モードに切り替えました（⚙ 画質 で変更できます）"); }
+  }
   uiAcc += real;
   if(uiAcc>0.15){
     uiAcc = 0;
     updHeader(); renderPanel(); updUnits(); updOrb(); updReb();
-    document.title = "WAVE "+S.wave+" - 地球防衛ファクトリー";
+    document.title = "DAY "+S.wave+" - 地球防衛ファクトリー";
   }
   if((saveAcc += real) > 5){ saveAcc = 0; if(!R.dead) save(); }
   requestAnimationFrame(frame);
@@ -2016,9 +2321,9 @@ function init(){
   recalcBonus();
   if(st!=="load" && st!=="treeReset") newRun();
   if(st==="treeReset") setTimeout(()=>toast(`転生スキルツリーを作り直しました。使った転生pt（${S.souls}）をすべて返却しました`), 500);
-  if(st==="migrate") setTimeout(()=>toast(`アップデートで転生システムに移行しました。これまでの最高WAVEに応じて 転生pt +${S.souls} を引き継ぎました！`), 500);
+  if(st==="migrate") setTimeout(()=>toast(`アップデートで転生システムに移行しました。これまでの最高DAYに応じて 転生pt +${S.souls} を引き継ぎました！`), 500);
   R.waveT = -1; R.fresh = true;
-  setSpeed(S.speed);
+  setSpeed(S.speed); applyGfx();
   $("muteBtn").textContent = S.mute ? "🔇 音" : "🔊 音"; syncRangeBtn();
   buildUnits(); buildOrb(); buildReb(); renderPanel(); updHeader(); updUnits(); updOrb(); updReb();
   window.addEventListener("beforeunload", ()=>{ if(!R.dead) save(); });
