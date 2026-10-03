@@ -283,7 +283,7 @@ const isBig = t => isBoss(t) || t==="carrier";
 // 兵器を撃ってくる敵：[発射間隔(秒), 1回の発射数, 出現DAY, 撃てる個体の割合]
 // 序盤から兵士の一部もミサイルを撃ってくる。迎撃が追いつかないと人口がじわじわ削られる
 const SHOOTERS = {
-  grunt:[6,1,2,0.15], tank:[6,1,4,0.5], shell:[7,1,7,0.4], carrier:[4,2,1,1],
+  grunt:[6,1,2,0.2], tank:[6,1,4,0.5], shell:[7,1,7,0.4], carrier:[4,2,1,1],
   hive:[6,1,1,1], boss:[4,2,1,1], fortress:[5,2,1,1], splitter:[6,1,1,1], phantom:[5,1,1,1], regen:[6,1,1,1],
   bomber:[7,6,1,1], twin:[6,2,1,1], gravity:[6,1,1,1], emp:[6,1,1,1], overlord:[4,3,1,1],
 };
@@ -362,7 +362,8 @@ const SLOT_TIERS = [4,8,12,16,20];   // この段に到達すると装備スロ�
 /* ---------- 転生スキルツリー：下から上へ登り、神に近づく。全100個。各スキルは1回解放するだけ。効果はすべて掛け合わせ ---------- */
 const TIER_W = [7,7,7,7,6,6,6,6,6,5,5,5,5,5,4,4,3,3,2,1];   // 各段のスキル数（合計100）。上ほど狭まり、頂上は1つ
 const REALMS = ["人","人","英雄","英雄","聖者","聖者","賢者","賢者","天使","天使","大天使","大天使","熾天使","熾天使","半神","半神","神域","神域","神の御前","神"];
-const SKH = 2400;                                            // ツリーのキャンバスの高さ
+const SKH = 2400;
+const TREE_VER = 3;                // ツリーの中身を変えたら上げる（古いセーブは全額返却）                                            // ツリーのキャンバスの高さ
 const SK_COL = {atk:"#f87171",all:"#fde68a",rate:"#f87171",range:"#38bdf8",startT:"#38bdf8",rew:"#fbbf24",gold:"#fbbf24",startGold:"#fbbf24",cost:"#fbbf24",soul:"#c4b5fd",
   popMax:"#4ade80",dmgcut:"#4ade80",regen:"#4ade80",aa:"#4ade80",orbDmg:"#7dd3fc",orbR:"#7dd3fc",orbN:"#7dd3fc",orbRate:"#7dd3fc",
   bombDmg:"#fb923c",bombR:"#fb923c",bombCd:"#fb923c",p_gun:"#c084fc",p_missile:"#c084fc",p_tesla:"#c084fc",p_laser:"#c084fc",p_rail:"#c084fc",
@@ -434,7 +435,7 @@ const treeOwned = () => TN.reduce((s,n)=>s+(S.tree[n.id]?1:0),0);
 const KEY = "earthdefense_v9";
 function fresh(){
   return {showRange:true, gold:START_GOLD, turrets:[], maxT:START_MAXT, popF:1, wave:1, runStart:1, runBest:1, runBoss:0, orb:{d:0,r:0,s:0},
-          best:1, souls:0, soulsAll:0, rebirths:0, tree:{}, items:{}, seen:{}, equip:[], clears:0, clearBest:0, runTime:0, gfx:"auto", speed:1, mute:false, last:Date.now()};
+          best:1, souls:0, soulsAll:0, rebirths:0, tree:{}, items:{}, seen:{}, equip:[], clears:0, clearBest:0, runTime:0, runCleared:false, treeVer:TREE_VER, gfx:"auto", speed:1, mute:false, last:Date.now()};
 }
 let S = fresh();
 function load(){
@@ -442,7 +443,8 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if(raw){
       const d = JSON.parse(raw); S = Object.assign(fresh(), d); S.orb = Object.assign({d:0,r:0,s:0}, d.orb||{});
-      if(Object.keys(S.tree).some(id=>!TNI[id])){ S.tree = {}; S.souls = S.soulsAll; return "treeReset"; }   // 旧ツリー（レベル制）は全額返金
+      // ツリーの中身が変わった古いセーブ（レベル制／スキルの星がない版）は、使った転生ptを全額返却
+      if((d.treeVer||0)<TREE_VER){ const had = Object.keys(S.tree).length>0; S.tree = {}; S.equip = []; S.souls = S.soulsAll; S.treeVer = TREE_VER; if(had) return "treeReset"; }
       return "load";
     }
     // 旧バージョン（v8）のセーブがあれば、最高DAYに応じた転生ptを引き継ぐ
@@ -524,9 +526,9 @@ const speedMult = w => 1 + Math.min(0.6, 0.008*(w-1));
 // 基準体力：DAY30までは緩やか（×1.105／DAY）。DAY30を超えると伸び率が加速して「壁」になる。
 // 伸び率には上限（HP_RMAX）があり、転生スキルとエピックアイテムで壁の先へ進める
 const HP_A = 0.13, HP_B = 0.008, HP_W0 = 20, HP_RMAX = 0.20;
-const HP_BASE = 12;
+const HP_BASE = 15;
 const WAVE_GAP = 3.5;             // 出現が終わってから次のDAYまでの秒数（短いほど敵が重なって押し寄せる）
-const HP_LATE = 150, HP_RLATE = 0.07, HP_DEC = 0.001;   // DAY150を過ぎると伸び率が少しずつ下がり、最低0.07/日
+const HP_LATE = 150, HP_RLATE = 0.08, HP_DEC = 0.0009;   // DAY150を過ぎると伸び率が少しずつ下がり、最低0.07/日
 function hpRate(k){
   const r = Math.min(HP_RMAX, HP_A + 2*HP_B*Math.max(0, k-HP_W0));
   return k<=HP_LATE ? r : Math.max(HP_RLATE, r - HP_DEC*(k-HP_LATE));
@@ -612,7 +614,8 @@ function fmt(n){
   if(!isFinite(n)) return "∞";
   if(n<0) return "-"+fmt(-n);
   if(n<1e4){ if(n%1===0) return String(n); return n<10?n.toFixed(2):n<100?n.toFixed(1):String(Math.floor(n)); }
-  const U=[[1e20,"垓"],[1e16,"京"],[1e12,"兆"],[1e8,"億"],[1e4,"万"]];
+  const U=[[1e48,"極"],[1e44,"載"],[1e40,"正"],[1e36,"澗"],[1e32,"溝"],[1e28,"穣"],[1e24,"秭"],[1e20,"垓"],[1e16,"京"],[1e12,"兆"],[1e8,"億"],[1e4,"万"]];
+  if(n>=1e52) return n.toExponential(2);
   for(const [v,s] of U) if(n>=v) return (n/v).toFixed(n/v<100?2:1)+s;
   return n.toExponential(2);
 }
@@ -1054,7 +1057,7 @@ function step(dt){
     if(!R.queue.length) R.waveT = 0;
   }else{
     R.waveT += dt;
-    const hold = S.wave===FINAL_DAY && !R.finalDown;   // ラスボスを倒すまで次の日は来ない
+    const hold = S.wave===FINAL_DAY && !R.finalDown && !R.fresh;   // ラスボスを倒すまで次の日は来ない（366日目の開始そのものは止めない）
     if(!hold && (R.waveT >= WAVE_GAP || (R.aliens.length===0 && R.waveT >= 1.0))){       // 前の日の敵を倒しきる前に次が来る
       if(R.fresh) R.fresh = false; else S.wave++;
       startWave(); R.waveT = 0;
@@ -1429,6 +1432,7 @@ $("rouOk").onclick = ()=>{ $("rouOv").classList.remove("open"); R.rou = false; u
 /* ---------- 人類滅亡と転生 ---------- */
 function die(){
   if(R.dead) return;
+  if(R.finalDown && !R.cleared && R.clearT>0){ S.popF = 0.001; return; }   // ラスボスを倒した直後なら勝利を優先
   R.dead = true; S.popF = 0;
   const g = soulGain();
   $("deadInfo").innerHTML = `<p>宇宙人の侵攻により、地球の人口は0になった…<br>人類は <b>DAY ${S.wave}</b> に滅亡した。</p>
@@ -1454,7 +1458,7 @@ function newRun(){
   recalcBonus();
   const w0 = startWaveOf();
   Object.assign(S, {gold:START_GOLD + bA("startGold") + (w0>1 ? warpGold(w0) : 0), turrets:[], maxT:START_MAXT + bA("startT"),
-                    popF:1, wave:w0, runStart:w0, runBest:w0, runBoss:0, runTime:0, orb:{d:0,r:0,s:0}});
+                    popF:1, wave:w0, runStart:w0, runBest:w0, runBoss:0, runTime:0, runCleared:false, orb:{d:0,r:0,s:0}});
   resetField(); recount();
 }
 $("deadGo").onclick = ()=>{ $("deadOv").classList.remove("open"); R.dead = false; rebirth(); openTree(); };
@@ -2210,7 +2214,7 @@ $("bdClose").onclick = closeBuild;
 const fmtTime = sec => { sec = Math.floor(sec); const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s2 = sec%60; return (h?h+"時間":"")+m+"分"+s2+"秒"; };
 function gameClear(){
   if(R.cleared) return;
-  R.cleared = true; S.clears++;
+  R.cleared = true; S.clears++; S.runCleared = true;
   const first = S.clears===1, rb = S.rebirths+1;
   if(!S.clearBest || rb<S.clearBest) S.clearBest = rb;
   S.souls += CLEAR_BONUS; S.soulsAll += CLEAR_BONUS;
@@ -2323,6 +2327,7 @@ function init(){
   if(st==="treeReset") setTimeout(()=>toast(`転生スキルツリーを作り直しました。使った転生pt（${S.souls}）をすべて返却しました`), 500);
   if(st==="migrate") setTimeout(()=>toast(`アップデートで転生システムに移行しました。これまでの最高DAYに応じて 転生pt +${S.souls} を引き継ぎました！`), 500);
   R.waveT = -1; R.fresh = true;
+  if(S.runCleared) R.finalDown = true;            // クリア済みの人生を再開したときは、ラスボスを再び出さない
   setSpeed(S.speed); applyGfx();
   $("muteBtn").textContent = S.mute ? "🔇 音" : "🔊 音"; syncRangeBtn();
   buildUnits(); buildOrb(); buildReb(); renderPanel(); updHeader(); updUnits(); updOrb(); updReb();
