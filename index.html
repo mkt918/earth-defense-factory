@@ -77,8 +77,9 @@ footer button{background:none;border:0;color:var(--dim);text-decoration:underlin
 .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;width:min(620px,94vw);text-align:center}
 /* 転生スキルツリー */
 .skWrap{display:flex;gap:12px;max-width:1300px;margin:0 auto;flex-wrap:wrap;justify-content:center}
-#skCv{width:min(94vw,calc(100vh - 80px),860px);height:auto;aspect-ratio:1;background:radial-gradient(circle at 50% 50%,#1a1030,#04060d 70%);border:1px solid var(--line);border-radius:12px;touch-action:manipulation}
-.skSide{width:310px;max-width:94vw}
+#skScroll{max-height:calc(100vh - 24px);overflow-y:auto;border:1px solid var(--line);border-radius:12px}
+#skCv{display:block;width:min(94vw,720px);height:auto;touch-action:manipulation}
+.skSide{width:330px;max-width:94vw;align-self:flex-start;position:sticky;top:0}
 .skHead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .skHead h3{margin:0;font-size:17px;color:var(--warn)}
 .skHead .btn{margin-left:auto}
@@ -143,11 +144,11 @@ footer button{background:none;border:0;color:var(--dim);text-decoration:underlin
 <!-- 転生スキルツリー -->
 <div id="skOv" class="ov">
   <div class="skWrap">
-    <div><canvas id="skCv" width="1000" height="1000"></canvas></div>
+    <div id="skScroll"><canvas id="skCv" width="1000" height="2400"></canvas></div>
     <div class="skSide">
       <div class="skHead"><h3>♻ 転生スキルツリー</h3><button class="btn pri" id="skClose">▶ 防衛に戻る</button></div>
       <div class="card" style="margin-bottom:8px">🔮 転生pt：<b id="skSP" style="color:#c4b5fd;font-size:18px">0</b>
-        <div class="note" style="margin-top:4px">転生pt は<b>人口が全滅したとき</b>（または自ら転生したとき）に、到達WAVEと倒したボスの数に応じて手に入ります。スキルは<b>永続</b>で、何度転生しても消えません。中央から枝をたどって強化します。</div></div>
+        <div class="note" style="margin-top:4px">転生pt は<b>人口が全滅したとき</b>（または自ら転生したとき）に、到達WAVEと倒したボスの数に応じて手に入ります。スキルは<b>永続</b>で、何度転生しても消えません。いちばん下から上へ登り、<b>神</b>を目指します（全100個・効果はすべて掛け合わせ）。</div></div>
       <div class="card" id="skInfo" style="margin-bottom:8px">スキルをクリックして詳細を見る</div>
       <div class="card"><div id="skList" style="font-size:12px"></div></div>
     </div>
@@ -221,7 +222,7 @@ const ALIENS = {
   cloak:  {name:"隠密機",     hp:1,   speed:52,  dmg:0.25, size:3.2, color:"#c4b5fd", info:"ときどき姿を消し、砲台に狙われない（自動攻撃と爆発は当たる）"},
   carrier:{name:"宇宙空母",   hp:50,  speed:16,  dmg:10,   size:20,  color:"#94a3b8"},
   // 敵が地球へ向けて撃つミサイル。速度は遅め。撃ち落とさないと着弾して大ダメージ
-  emissile:{name:"敵ミサイル", hp:1.2, speed:78,  dmg:2.5,  size:3.5, color:"#ef4444"},
+  emissile:{name:"敵ミサイル", hp:2.0, speed:85,  dmg:1.3,  size:3.5, color:"#ef4444"},
   // ボス（5WAVEごとに登場。倒すと宝箱を落とす）
   hive:    {name:"女王蜂",   boss:1, hp:120, speed:20, dmg:25, size:14, sides:6, color:"#facc15", info:"偵察機の群れを次々と産み出す"},
   boss:    {name:"母艦",     boss:1, hp:250, speed:20, dmg:35, size:13, sides:0, color:"#e879f9", info:"地球へミサイルを撃ってくる"},
@@ -239,9 +240,14 @@ const BOSS_ORDER = ["hive","boss","fortress","splitter","phantom","regen","bombe
 const isBoss = t => !!ALIENS[t].boss;
 const isBig = t => isBoss(t) || t==="carrier";
 // 兵器を撃ってくる敵：[発射間隔(秒), 1回の発射数, 出現WAVE]
-const SHOOTERS = {tank:[9,1,12], carrier:[6,1,1], boss:[5,1,1], fortress:[7,1,1], bomber:[9,5,1], twin:[8,1,1], overlord:[5,2,1]};
-const TANK_SHOOTER_RATE = 0.12;
-const shotsAt = (type,base) => base + (S.wave>=30 ? 1 : 0) + (S.wave>=60 ? 1 : 0);
+// 兵器を撃ってくる敵：[発射間隔(秒), 1回の発射数, 出現WAVE, 撃てる個体の割合]
+// 序盤から兵士の一部もミサイルを撃ってくる。迎撃が追いつかないと人口がじわじわ削られる
+const SHOOTERS = {
+  grunt:[6,1,2,0.15], tank:[6,1,4,0.5], shell:[7,1,7,0.4], carrier:[4,2,1,1],
+  hive:[6,1,1,1], boss:[4,2,1,1], fortress:[5,2,1,1], splitter:[6,1,1,1], phantom:[5,1,1,1], regen:[6,1,1,1],
+  bomber:[7,6,1,1], twin:[6,2,1,1], gravity:[6,1,1,1], emp:[6,1,1,1], overlord:[4,3,1,1],
+};
+const shotsAt = (type,base) => base + (S.wave>=25 ? 1 : 0) + (S.wave>=50 ? 1 : 0) + (S.wave>=80 ? 1 : 0);
 const GRAV_R = 150, MEDIC_R = 90, EMP_R = 220;
 
 /* ---------- エピックアイテム（全20種。重ねるほど効果が上がる（各Lv10まで）。転生しても消えない） ---------- */
@@ -270,67 +276,74 @@ const ITEMS = [
   {id:"crown",    ic:"👑", name:"王者の冠",       k:"all",       v:.08},
 ];
 
-/* ---------- 転生スキルツリー（永続強化。転生ptで強化） ---------- */
-const BR = [
-  {n:"火力",c:"#f87171"}, {n:"射程・配備",c:"#38bdf8"}, {n:"人口",c:"#4ade80"}, {n:"経済",c:"#fbbf24"},
-  {n:"自動攻撃",c:"#7dd3fc"}, {n:"核ミサイル",c:"#fb923c"}, {n:"兵器",c:"#c084fc"}, {n:"時空",c:"#f0abfc"},
-];
-// [id, 枝, 深さ, 横ずれ, 親, 名前, 効果, 1Lvあたり, 最大Lv, 初期コスト, コスト倍率]
-const TREE = [
-  ["atk1", 0,1, 0,null,  "攻撃力",           "atk",      .2, 30, 1,1.32],
-  ["rate1",0,2,-1,"atk1","発射速度",         "rate",     .05,15, 3,1.45],
-  ["atk2", 0,2, 1,"atk1","猛攻",             "atk",      .35,20, 6,1.40],
-  ["all1", 0,3, 1,"atk2","覇者の力",         "all",      .25,10,25,1.60],
-  ["rng1", 1,1, 0,null,  "射程",             "range",    .05,12, 2,1.45],
-  ["slot1",1,2,-1,"rng1","開始時の設置上限", "startT",   1,  10, 4,1.50],
-  ["cost1",1,2, 1,"rng1","砲台の値引き",     "cost",     .03,10, 4,1.50],
-  ["pop1", 2,1, 0,null,  "最大人口",         "popMax",   .1, 20, 1,1.35],
-  ["cut1", 2,2,-1,"pop1","防壁",             "dmgcut",   .04,10, 3,1.50],
-  ["reg1", 2,2, 1,"pop1","人口回復",         "regen",    .3, 10, 3,1.45],
-  ["aa1",  2,3,-1,"cut1","迎撃",             "aa",       .3, 10, 6,1.45],
-  ["rew1", 3,1, 0,null,  "撃破報酬",         "rew",      .12,25, 1,1.33],
-  ["gold1",3,2,-1,"rew1","毎秒の金",         "gold",     .5, 15, 3,1.45],
-  ["sg1",  3,2, 1,"rew1","開始資金",         "startGold",300,10, 3,1.50],
-  ["soul1",3,3,-1,"gold1","魂の収穫",        "soul",     .1, 20,10,1.50],
-  ["od1",  4,1, 0,null,  "自動攻撃の威力",   "orbDmg",   .25,25, 1,1.33],
-  ["or1",  4,2,-1,"od1", "自動攻撃の範囲",   "orbR",     8,  15, 3,1.45],
-  ["on1",  4,2, 1,"od1", "自動攻撃の同時目標","orbN",    1,   8, 5,1.60],
-  ["os1",  4,3,-1,"or1", "自動攻撃の連射",   "orbRate",  .06,10, 8,1.50],
-  ["bd1",  5,1, 0,null,  "核の威力",         "bombDmg",  .4, 20, 1,1.35],
-  ["br1",  5,2,-1,"bd1", "核の範囲",         "bombR",    .08,10, 3,1.50],
-  ["bc1",  5,2, 1,"bd1", "核の再装填",       "bombCd",   .05,10, 3,1.50],
-  ["pg",   6,1, 0,null,  "機関砲",           "p_gun",    .3, 20, 2,1.38],
-  ["pm",   6,2,-1,"pg",  "ミサイル",         "p_missile",.3, 20, 3,1.38],
-  ["pt",   6,2, 1,"pg",  "雷塔",             "p_tesla",  .3, 20, 4,1.38],
-  ["pl",   6,3,-1,"pm",  "レーザー",         "p_laser",  .3, 20, 6,1.38],
-  ["pr",   6,3, 1,"pt",  "レールガン",       "p_rail",   .3, 20, 8,1.38],
-  ["warp", 7,1, 0,null,  "ワープ",           "warp",     3,  20, 4,1.40],
-  ["chest",7,2,-1,"warp","宝運",             "chest",    .06,10, 8,1.50],
-  ["chain",7,2, 1,"warp","連鎖雷",           "chain",    1,   5, 8,1.70],
-];
-const TN = TREE.map(([id,br,d,off,par,name,k,v,max,c0,g])=>{
-  const a = (-90 + br*45 + off*15)*Math.PI/180, r = 30 + d*110;
-  return {id, br, d, par, name, k, v, max, c0, g, x:500+Math.cos(a)*r, y:500+Math.sin(a)*r};
-});
-const TNI = {}; TN.forEach(n=>{ TNI[n.id] = n; });
+/* ---------- 転生スキルツリー：下から上へ登り、神に近づく。全100個。各スキルは1回解放するだけ。効果はすべて掛け合わせ ---------- */
+const TIER_W = [7,7,7,7,6,6,6,6,6,5,5,5,5,5,4,4,3,3,2,1];   // 各段のスキル数（合計100）。上ほど狭まり、頂上は1つ
+const REALMS = ["人","人","英雄","英雄","聖者","聖者","賢者","賢者","天使","天使","大天使","大天使","熾天使","熾天使","半神","半神","神域","神域","神の御前","神"];
+const SKH = 2400;                                            // ツリーのキャンバスの高さ
+const SK_COL = {atk:"#f87171",all:"#fde68a",rate:"#f87171",range:"#38bdf8",startT:"#38bdf8",rew:"#fbbf24",gold:"#fbbf24",startGold:"#fbbf24",cost:"#fbbf24",soul:"#c4b5fd",
+  popMax:"#4ade80",dmgcut:"#4ade80",regen:"#4ade80",aa:"#4ade80",orbDmg:"#7dd3fc",orbR:"#7dd3fc",orbN:"#7dd3fc",orbRate:"#7dd3fc",
+  bombDmg:"#fb923c",bombR:"#fb923c",bombCd:"#fb923c",p_gun:"#c084fc",p_missile:"#c084fc",p_tesla:"#c084fc",p_laser:"#c084fc",p_rail:"#c084fc",
+  warp:"#f0abfc",chest:"#f0abfc",chain:"#fde047"};
+const SK_NAME = {atk:"攻撃力",all:"全能",rate:"連射",range:"射程",startT:"配備枠",rew:"撃破報酬",gold:"毎秒の金",startGold:"開始資金",cost:"値引き",soul:"魂の収穫",
+  popMax:"最大人口",dmgcut:"防壁",regen:"人口回復",aa:"迎撃",orbDmg:"念動の威力",orbR:"念動の範囲",orbN:"念動の分身",orbRate:"念動の連射",
+  bombDmg:"核の威力",bombR:"核の範囲",bombCd:"核の再装填",p_gun:"機関砲",p_missile:"ミサイル",p_tesla:"雷塔",p_laser:"レーザー",p_rail:"レールガン",
+  warp:"ワープ",chest:"宝運",chain:"連鎖雷"};
+const SK_POOL = ["rate","rew","popMax","orbDmg","p_gun","bombDmg","range","dmgcut","p_missile","gold","orbR","p_tesla","aa","soul",
+  "cost","p_laser","regen","orbN","bombR","p_rail","startGold","chain","orbRate","warp","startT","bombCd","chest"];
+// 上の段ほど強い（倍率系は1段ごとに×1.12）
+function skVal(k,t){
+  const g = Math.pow(1.12, t-1);
+  switch(k){
+    case "atk": return .15*g;  case "all": return .10*g;    case "rate": return .05*g;  case "range": return .04*g;
+    case "rew": return .12*g;  case "gold": return .3*g;    case "popMax": return .1*g; case "regen": return .2*g;
+    case "aa": return .25*g;   case "orbDmg": return .25*g; case "orbRate": return .05*g; case "bombDmg": return .4*g;
+    case "bombR": return .06*g; case "soul": return .08;
+    case "dmgcut": return .03+.004*t; case "cost": return .03+.002*t; case "bombCd": return .05;
+    case "orbR": return 6+t; case "orbN": return 1; case "chain": return 1; case "startT": return 1; case "warp": return 2+t; case "chest": return .04;
+    case "startGold": return Math.round(200*g*t);
+    default: return .3*g;                                    // 各砲台の威力
+  }
+}
+const TN = [], TNI = {};
+(function(){
+  let k = 0, below = [];
+  TIER_W.forEach((w,ti)=>{
+    const t = ti+1, y = SKH-110-ti*112, row = [], trunk = w%2 ? (w-1)/2 : w/2-1;
+    for(let i=0;i<w;i++){
+      const x = 500 + (i-(w-1)/2)*130;
+      let key, v, name;
+      if(t===TIER_W.length){ key = "all"; v = 2.0; name = "神化"; }                   // 頂上：神になる
+      else{
+        key = i===trunk ? (t%4===0 ? "all" : "atk") : SK_POOL[(k++)%SK_POOL.length];  // 中央の幹は火力
+        v = skVal(key, t); name = REALMS[ti]+"の"+SK_NAME[key];
+      }
+      const n = {id:"t"+t+"_"+i, t, x, y, k:key, v, name, cost:Math.round(3*Math.pow(1.55,t-1))*(t===TIER_W.length?3:1),
+                 below:below.filter(b=>Math.abs(b.x-x)<=131).map(b=>b.id)};
+      TN.push(n); TNI[n.id] = n; row.push(n);
+    }
+    below = row;
+  });
+})();
 const EFF = {atk:"全砲台の攻撃力", rate:"全砲台の発射速度", range:"全砲台の射程", rew:"撃破報酬", gold:"毎秒の金", startGold:"開始資金",
   startT:"開始時の設置上限", soul:"獲得する転生pt", popMax:"最大人口", dmgcut:"着弾による人口被害", regen:"人口の回復速度", aa:"敵ミサイルへの与ダメージ",
   p_gun:"機関砲の威力", p_missile:"ミサイルの威力", p_tesla:"雷塔の威力", p_laser:"レーザーの威力", p_rail:"レールガンの威力",
   orbDmg:"自動攻撃の威力", orbR:"自動攻撃の範囲", orbN:"自動攻撃の同時目標数", orbRate:"自動攻撃の連射速度",
   bombDmg:"核ミサイルの威力", bombR:"核ミサイルの範囲", bombCd:"核ミサイルの再装填時間", cost:"砲台の購入コスト",
   chain:"稲妻の連鎖数", warp:"開始WAVE", chest:"宝箱でルーレットをもう1回引く確率", all:"攻撃力・撃破報酬（発射速度は半分）"};
-// 足し算でまとめる効果（それ以外は掛け算で重なる）
-const SUMK = {orbR:1, orbN:1, chain:1, warp:1, startT:1, startGold:1, dmgcut:1, cost:1, bombCd:1, chest:1};
+// 足し算でまとめる効果（数や確率）。減らす効果は ×(1−値) で掛け合わせ、それ以外は ×(1＋値) で掛け合わせる
+const SUMK = {orbR:1, orbN:1, chain:1, warp:1, startT:1, startGold:1, chest:1};
+const REDK = {dmgcut:1, cost:1, bombCd:1};
 function effText(k,v){
   v = Math.round(v*1000)/1000;
   if(k==="orbR") return `${EFF[k]} +${v}px`;
   if(k==="startGold") return `${EFF[k]} +${fmt(v)}`;
   if(k==="orbN"||k==="chain"||k==="warp"||k==="startT") return `${EFF[k]} +${v}`;
-  if(k==="dmgcut"||k==="cost"||k==="bombCd") return `${EFF[k]} -${Math.round(v*100)}%`;
+  if(REDK[k]) return `${EFF[k]} -${Math.round(v*100)}%`;
   return `${EFF[k]} +${Math.round(v*100)}%`;
 }
-const nodeCost = n => Math.max(1, Math.round(n.c0*Math.pow(n.g, S.tree[n.id]||0)));
-const nodeOpen = n => !n.par || (S.tree[n.par]||0) >= 1;
+const nodeOpen = n => n.t===1 || n.below.some(id=>S.tree[id]);
+const nodeCan = n => !S.tree[n.id] && nodeOpen(n) && S.souls>=n.cost;
+const treeOwned = () => TN.reduce((s,n)=>s+(S.tree[n.id]?1:0),0);
 
 /* ====================== 状態 ====================== */
 const KEY = "earthdefense_v9";
@@ -342,7 +355,11 @@ let S = fresh();
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    if(raw){ const d = JSON.parse(raw); S = Object.assign(fresh(), d); S.orb = Object.assign({d:0,r:0,s:0}, d.orb||{}); return "load"; }
+    if(raw){
+      const d = JSON.parse(raw); S = Object.assign(fresh(), d); S.orb = Object.assign({d:0,r:0,s:0}, d.orb||{});
+      if(Object.keys(S.tree).some(id=>!TNI[id])){ S.tree = {}; S.souls = S.soulsAll; return "treeReset"; }   // 旧ツリー（レベル制）は全額返金
+      return "load";
+    }
     // 旧バージョン（v8）のセーブがあれば、最高WAVEに応じた転生ptを引き継ぐ
     const old = localStorage.getItem("earthdefense_v8");
     if(old){
@@ -367,45 +384,50 @@ const $ = id => document.getElementById(id);
 let BM = {}, BA = {};
 function recalcBonus(){
   BM = {}; BA = {};
-  const add = (k,x)=>{ if(SUMK[k]) BA[k] = (BA[k]||0)+x; else BM[k] = (BM[k]||1)*(1+x); };
-  TN.forEach(n=>{ const lv = S.tree[n.id]||0; if(lv) add(n.k, n.v*lv); });
+  const add = (k,x)=>{ if(SUMK[k]) BA[k] = (BA[k]||0)+x; else if(REDK[k]) BM[k] = (BM[k]||1)*Math.max(0,1-x); else BM[k] = (BM[k]||1)*(1+x); };
+  TN.forEach(n=>{ if(S.tree[n.id]) add(n.k, n.v); });
   ITEMS.forEach(it=>{ const c = S.items[it.id]||0; if(c) add(it.k, it.v*c); });
   recount();
 }
 const bM = k => BM[k]||1, bA = k => BA[k]||0;
 const kinds = () => ITEMS.reduce((s,it)=>s+(S.items[it.id]?1:0),0);
 const colM = () => (1+0.04*kinds())*(kinds()>=ITEMS.length ? 1.5 : 1);   // 収集ボーナス
-const atkM   = () => bM("atk")*bM("all")*colM();
-const rateM  = () => bM("rate")*(1+(bM("all")-1)*0.5);
-const rangeM = () => bM("range");
+// 発射速度は×4、射程は×1.8で頭打ち。それを超えた分は攻撃力に上乗せする（弾が多すぎて重くならないように）
+const rateRaw  = () => bM("rate")*(1+(bM("all")-1)*0.5);
+const rangeRaw = () => bM("range");
+const atkM   = () => bM("atk")*bM("all")*colM()*Math.max(1, rateRaw()/4)*Math.max(1, rangeRaw()/1.8);
+const rateM  = () => Math.min(4, rateRaw());
+const rangeM = () => Math.min(1.8, rangeRaw());
 const rewM   = () => bM("rew")*bM("all");
 const regenM = () => Math.min(6, bM("regen"));                       // 人口回復は強化しても最大6倍まで
 const soulM  = () => bM("soul");
-const costDisc = () => 1 - Math.min(0.6, bA("cost"));
-const dmgCut = () => 1 - Math.min(0.6, bA("dmgcut"));
+const costDisc = () => Math.max(0.3, bM("cost"));
+const dmgCut = () => Math.max(0.25, bM("dmgcut"));
 const popMax = () => POP_BASE*bM("popMax");
 const popNow = () => S.popF*popMax();
 const goldRate = () => PASSIVE_GOLD*bM("gold")*(1+0.05*(S.wave-1));
 
-// 敵の数：WAVE1は16体 → WAVE30で約180体 → WAVE75以降は600体
-const waveN = w => Math.min(600, Math.floor(12 + 4*w + 0.05*w*w));
+// 敵の数（物量で押してくる）：WAVE1は27体 → WAVE30で約300体 → WAVE80以降は1000体
+const waveN = w => Math.min(1000, Math.floor(20 + 7*w + 0.08*w*w));
 // 敵の速度：WAVEごとに+0.8%（最大+60%）
 const speedMult = w => 1 + Math.min(0.6, 0.008*(w-1));
 // 基準体力：WAVE30までは緩やか（×1.105／WAVE）。WAVE30を超えると伸び率が加速して「壁」になる。
 // 伸び率には上限（HP_RMAX）があり、転生スキルとエピックアイテムで壁の先へ進める
-const HP_A = 0.10, HP_B = 0.013, HP_W0 = 25, HP_RMAX = 0.26;
+const HP_A = 0.13, HP_B = 0.008, HP_W0 = 20, HP_RMAX = 0.20;
+const HP_BASE = 12;
+const WAVE_GAP = 3.5;             // 出現が終わってから次のWAVEまでの秒数（短いほど敵が重なって押し寄せる）
 const _hpLog = [0];
 function baseHp(w){
   while(_hpLog.length < w){ const k = _hpLog.length; _hpLog.push(_hpLog[k-1] + Math.min(HP_RMAX, HP_A + 2*HP_B*Math.max(0, k-HP_W0))); }
-  return 5*Math.exp(_hpLog[w-1]);
+  return HP_BASE*Math.exp(_hpLog[w-1]);          // 1体ずつは少し柔らかめ。そのぶん数で押す
 }
 // 撃破報酬（金）：敵の硬さの0.8乗。数が増えるほど1体の価値は下がる（1ウェーブの総額 ∝ 硬さ^0.8×√数）
 const REW_K = 1.0, REW_EXP = 0.7;
 function reward(a){
   return REW_K * Math.pow(a.maxhp, REW_EXP) * Math.sqrt(16/waveN(S.wave)) * rewM() * (1+Math.min(0.3, R.combo*0.002));
 }
-// 転生pt：到達WAVEの1.45乗＋ボス撃破数（ワープで飛ばしたWAVEの分は少なめに数える）
-const soulGain = () => S.runBest<5 ? 0 : Math.floor((0.5*(Math.pow(S.runBest,1.45) - 0.7*Math.pow(S.runStart,1.45)) + 3*S.runBoss) * soulM());
+// 転生pt：到達WAVEの1.3乗＋ボス撃破数（ワープで飛ばしたWAVEの分は少なめに数える）
+const soulGain = () => S.runBest<5 ? 0 : Math.floor((0.8*(Math.pow(S.runBest,1.3) - 0.7*Math.pow(S.runStart,1.3)) + S.runBoss) * soulM());
 // ワープ：開始WAVEは「全期間最高の6割」まで。飛ばしたWAVEで稼げたはずの金を受け取って始まる
 const startWaveOf = () => Math.max(1, Math.min(1+bA("warp"), Math.floor(S.best*0.6)));
 function warpGold(w){
@@ -450,8 +472,8 @@ const SLOT_G = 1.25;
 const maxTCost = () => Math.floor(300*Math.pow(SLOT_G, S.maxT-START_MAXT-bA("startT")));        // 設置上限の拡張（1つ増やすごとに×1.25）
 const costHtml = c => `<span style="color:${S.gold>=c?"#fbbf24":"#f87171"}">💰${fmt(c)}</span>`;
 // 核ミサイル（無料・再装填あり）
-const nukeR = () => 150*bM("bombR");
-const nukeCdTime = () => 20*(1-Math.min(0.7,bA("bombCd")));
+const nukeR = () => 150*Math.min(2.5, bM("bombR"));
+const nukeCdTime = () => 20*Math.max(0.3, bM("bombCd"));
 function avgTurretDmg(){
   let sum = 0; for(const t of S.turrets) sum += STC[t.type].dmg*(t.type==="rail" ? 0.5 : 1);
   return S.turrets.length ? sum/S.turrets.length : 5*atkM();
@@ -467,7 +489,7 @@ const ORB_UP = [
 const orbUpCost = o => Math.floor(o.base*Math.pow(o.g, S.orb[o.k])*costDisc());
 const orbR = () => Math.min(260, 70 + 10*S.orb.r + bA("orbR"));             // 範囲：70px から
 const orbTargets = () => Math.min(16, 4 + bA("orbN"));                       // 1回に狙う数：4体から
-const orbTick = () => ORB_TICK/((1+0.12*S.orb.s)*bM("orbRate"));
+const orbTick = () => ORB_TICK/((1+0.12*S.orb.s)*Math.min(3, bM("orbRate")));
 const orbDmg = () => avgTurretDmg()*0.15*(1+0.3*S.orb.d)*bM("orbDmg");       // 威力＝配置中の砲台の平均威力の15%から（強化1回ごとに+30%）
 const orbDps = () => orbDmg()*orbTargets()/orbTick();
 
@@ -602,7 +624,7 @@ function spawnAt(type, x, y, hpOver){
   const vx = (Math.random()-.5)*0.25, n = Math.hypot(vx,1), sp = A.speed*speedMult(S.wave);
   const al = {type, x, y, vx:vx/n*sp, vy:sp/n, hp, maxhp:hp, f:1, slowT:0, slow:0, dead:false};
   if(type==="drone"){ al.ph = Math.random()*6.28; al.t = 0; }
-  if(SHOOTERS[type] && (type!=="tank" || Math.random()<TANK_SHOOTER_RATE)) al.fireT = SHOOTERS[type][0]*(0.3+Math.random()*0.9);   // 重装艦は一部だけが撃つ
+  if(SHOOTERS[type] && Math.random()<SHOOTERS[type][3]) al.fireT = SHOOTERS[type][0]*(0.3+Math.random()*0.9);   // 雑魚は一部の個体だけが撃つ
   if(type==="carrier" || type==="overlord"){ al.lt = 1.2; al.launched = 0; }
   if(type==="hive") al.st = 1.5;
   if(type==="fortress" || type==="overlord"){ al.shMax = hp*0.35; al.sh = al.shMax; al.nh = 0; }
@@ -857,7 +879,7 @@ function step(dt){
     if(!R.queue.length) R.waveT = 0;
   }else{
     R.waveT += dt;
-    if(R.waveT >= 6 || (R.aliens.length===0 && R.waveT >= 1.0)){
+    if(R.waveT >= WAVE_GAP || (R.aliens.length===0 && R.waveT >= 1.0)){       // 前のWAVEを倒しきる前に次が来る
       if(R.fresh) R.fresh = false; else S.wave++;
       startWave(); R.waveT = 0;
     }
@@ -878,7 +900,7 @@ function step(dt){
       if(a.fireT<=0 && a.y>10 && a.y<surfaceY(a.x)-160){
         a.fireT += SH[0]*(0.8+Math.random()*0.4);
         for(let i=0,n=shotsAt(a.type,SH[1]);i<n;i++) fireEnemyMissile(a, A.boss?1.5:1);
-        if(a.type!=="tank") sfx("launch");
+        if(A.boss || a.type==="carrier") sfx("launch");
       }
     }
     if(a.type==="emissile" && R.pt.length<MAXP-6 && Math.random()<0.9)      // 赤い煙の尾
@@ -888,7 +910,7 @@ function step(dt){
       if(a.x<3) a.x = 3; else if(a.x>W-3) a.x = W-3;
     }else if(a.type==="carrier" || a.type==="overlord"){   // ドローン兵を発艦
       a.lt -= dt;
-      if(a.lt<=0 && a.launched<36 && R.aliens.length<1300 && a.y>20){
+      if(a.lt<=0 && a.launched<36 && R.aliens.length<1800 && a.y>20){
         a.lt += a.type==="overlord" ? 2 : 1.3;
         for(let i=0;i<2;i++) spawnAt("drone", a.x+(Math.random()-.5)*36, a.y+10);
         a.launched += 2;
@@ -896,7 +918,7 @@ function step(dt){
       }
     }else if(a.type==="hive"){                 // 偵察機の群れを産む
       a.st -= dt;
-      if(a.st<=0 && a.y>20 && R.aliens.length<1300){
+      if(a.st<=0 && a.y>20 && R.aliens.length<1800){
         a.st += 2.5;
         for(let i=0;i<4;i++) spawnAt("scout", a.x+(Math.random()-.5)*50, a.y+8);
         burst(a.x,a.y+8,"#fde047",10,180,0.35,2.5,0);
@@ -1809,84 +1831,115 @@ function renderPanel(){
 const skCv = $("skCv"), skx = skCv.getContext("2d");
 let skSel = null;
 const skStars = Array.from({length:160},()=>[Math.random()*1000,Math.random()*1000,Math.random()*1.5+.3]);
+const skBg = Array.from({length:40},()=>[Math.random()*1000, Math.random()*SKH*0.45, 40+Math.random()*120]);   // 上の方に浮かぶ雲
 function drawTree(){
   if(R.ov!=="sk") return;
   const c = skx, tm = performance.now()/1000;
-  c.clearRect(0,0,1000,1000);
-  c.fillStyle = "#9fb4d8";
-  skStars.forEach(s=>{ c.globalAlpha = .25+.2*Math.sin(tm+s[0]); c.fillRect(s[0],s[1],s[2],s[2]); });
+  // 背景：下は夜の宇宙、上へ行くほど金色の天上界
+  const bg = c.createLinearGradient(0,SKH,0,0);
+  bg.addColorStop(0,"#04060d"); bg.addColorStop(.45,"#141033"); bg.addColorStop(.8,"#3a2a52"); bg.addColorStop(1,"#a4813a");
+  c.fillStyle = bg; c.fillRect(0,0,1000,SKH);
+  c.fillStyle = "#cbd5ff";
+  skStars.forEach(s=>{ c.globalAlpha = .25+.2*Math.sin(tm+s[0]); c.fillRect(s[0],SKH*0.3+s[1]*SKH*0.7/1000,s[2],s[2]); });
+  c.fillStyle = "#fff7dd";
+  skBg.forEach(b=>{ c.globalAlpha = 0.05+0.12*(1-b[1]/(SKH*0.45)); c.beginPath(); c.ellipse(b[0],b[1],b[2],b[2]*0.3,0,0,7); c.fill(); });
   c.globalAlpha = 1;
-  c.textAlign = "center"; c.textBaseline = "middle";
-  BR.forEach((b,i)=>{
-    const a = (-90+i*45)*Math.PI/180;
-    c.fillStyle = b.c; c.font = "bold 17px sans-serif";
-    c.fillText(b.n, 500+Math.cos(a)*462, 500+Math.sin(a)*462);
-  });
-  // 枝
+  // 頂上の光
+  const top = TN[TN.length-1], lg = c.createRadialGradient(top.x,top.y,10,top.x,top.y,380);
+  lg.addColorStop(0,"rgba(255,244,200,.55)"); lg.addColorStop(1,"rgba(255,244,200,0)");
+  c.fillStyle = lg; c.fillRect(0,0,1000,top.y+380);
+  // 位階の名前（2段ごと）
+  c.textAlign = "left"; c.textBaseline = "middle";
+  for(let ti=0; ti<TIER_W.length; ti+=2){
+    const y = SKH-110-ti*112;
+    c.strokeStyle = "rgba(255,255,255,.08)"; c.lineWidth = 1; c.beginPath(); c.moveTo(0,y+56); c.lineTo(1000,y+56); c.stroke();
+    c.fillStyle = "rgba(253,230,138,.8)"; c.font = "bold 17px sans-serif"; c.fillText("【"+REALMS[ti]+(ti+1>=TIER_W.length-1?"":"の域")+"】", 10, y-56);
+  }
+  c.textAlign = "center";
+  c.fillStyle = "#fff7d6"; c.font = "bold 30px sans-serif"; c.fillText("✦ 神 ✦", 500, 46);
+  // 道（下の段とのつながり）
   TN.forEach(n=>{
-    const P = n.par ? TNI[n.par] : {x:500,y:500}, own = (S.tree[n.id]||0)>0, open = nodeOpen(n);
-    c.beginPath(); c.moveTo(P.x,P.y); c.lineTo(n.x,n.y);
-    if(own){ c.strokeStyle = BR[n.br].c; c.lineWidth = 3.5; c.shadowColor = BR[n.br].c; c.shadowBlur = 12; c.setLineDash([]); }
-    else if(open){ c.strokeStyle = "rgba(150,180,240,.6)"; c.lineWidth = 2; c.shadowBlur = 0; c.setLineDash([6,5]); }
-    else { c.strokeStyle = "rgba(120,130,170,.3)"; c.lineWidth = 1.5; c.shadowBlur = 0; c.setLineDash([3,6]); }
-    c.stroke(); c.shadowBlur = 0; c.setLineDash([]);
+    n.below.forEach(id=>{
+      const b = TNI[id], own = S.tree[n.id] && S.tree[id], open = S.tree[id];
+      c.beginPath(); c.moveTo(b.x,b.y); c.lineTo(n.x,n.y);
+      if(own){ c.strokeStyle = "rgba(253,230,138,.95)"; c.lineWidth = 4; c.shadowColor = "#fbbf24"; c.shadowBlur = 12; c.setLineDash([]); }
+      else if(open){ c.strokeStyle = "rgba(180,200,255,.6)"; c.lineWidth = 2; c.shadowBlur = 0; c.setLineDash([6,5]); }
+      else { c.strokeStyle = "rgba(140,150,190,.25)"; c.lineWidth = 1.5; c.shadowBlur = 0; c.setLineDash([3,6]); }
+      c.stroke(); c.shadowBlur = 0; c.setLineDash([]);
+    });
   });
-  // ノード
+  // スキル
   TN.forEach(n=>{
-    const lv = S.tree[n.id]||0, open = nodeOpen(n), maxed = lv>=n.max, can = open && !maxed && S.souls>=nodeCost(n), sel = skSel===n.id;
-    const r = 21, col = BR[n.br].c;
+    const own = !!S.tree[n.id], open = nodeOpen(n), can = nodeCan(n), sel = skSel===n.id, col = SK_COL[n.k], god = n.t===TIER_W.length;
+    const r = god ? 34 : 22;
     c.beginPath(); c.arc(n.x,n.y,r,0,7);
-    if(lv){ c.fillStyle = col; c.shadowColor = col; c.shadowBlur = maxed ? 26 : 14; }
-    else { c.fillStyle = open ? "#1a2348" : "#2a3150"; c.shadowBlur = 0; }
+    if(own){ c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 18; }
+    else { c.fillStyle = open ? "#1a2348" : "#22283f"; c.shadowBlur = 0; }
     c.fill(); c.shadowBlur = 0;
-    c.strokeStyle = open ? col : "#4b5577"; c.lineWidth = 2; c.stroke();
-    if(can){ c.strokeStyle = "rgba(253,230,138,"+(0.55+0.4*Math.sin(tm*4))+")"; c.lineWidth = 2.5; c.beginPath(); c.arc(n.x,n.y,r+4+Math.sin(tm*4)*1.5,0,7); c.stroke(); }
-    if(sel){ c.strokeStyle = "#fff"; c.lineWidth = 2; c.beginPath(); c.arc(n.x,n.y,r+9,0,7); c.stroke(); }
-    c.fillStyle = lv ? "#0b1020" : open ? "#cbd5e1" : "#6b7599"; c.font = "bold 13px sans-serif";
-    c.fillText(maxed ? "MAX" : lv+"/"+n.max, n.x, n.y+1);
-    c.fillStyle = open ? "#e6edf7" : "#6b7599"; c.font = "12px sans-serif";
-    c.fillText(n.name, n.x, n.y+r+12);
+    c.strokeStyle = open||own ? col : "#4b5577"; c.lineWidth = 2.5; c.stroke();
+    if(can){ c.strokeStyle = "rgba(253,230,138,"+(0.55+0.4*Math.sin(tm*4))+")"; c.lineWidth = 3; c.beginPath(); c.arc(n.x,n.y,r+5+Math.sin(tm*4)*1.5,0,7); c.stroke(); }
+    if(sel){ c.strokeStyle = "#fff"; c.lineWidth = 2; c.beginPath(); c.arc(n.x,n.y,r+10,0,7); c.stroke(); }
+    c.fillStyle = own ? "#0b1020" : open ? "#e6edf7" : "#6b7599"; c.font = "bold 12px sans-serif";
+    c.fillText(own ? "✓" : fmt(n.cost), n.x, n.y+1);
+    c.fillStyle = open||own ? "#f1f5f9" : "#6b7599"; c.font = "bold 12px sans-serif";
+    c.fillText(god ? "神化" : SK_NAME[n.k], n.x, n.y+r+13);
+    c.font = "11px sans-serif"; c.fillStyle = open||own ? "#cbd5e1" : "#59627f";
+    c.fillText(effText(n.k,n.v).replace(EFF[n.k],"").trim(), n.x, n.y+r+27);
   });
-  const g = c.createRadialGradient(500,500,2,500,500,40);
-  g.addColorStop(0,"#fff"); g.addColorStop(.4,"#e9d5ff"); g.addColorStop(1,"rgba(192,132,252,0)");
-  c.fillStyle = g; c.beginPath(); c.arc(500,500,40+Math.sin(tm*2)*3,0,7); c.fill();
-  c.fillStyle = "#3b0764"; c.font = "bold 14px sans-serif"; c.fillText("魂", 500, 501);
   requestAnimationFrame(drawTree);
 }
-function buyNode(n, times){
-  let k = 0;
-  while(k<times && nodeOpen(n) && (S.tree[n.id]||0)<n.max && S.souls>=nodeCost(n)){ S.souls -= nodeCost(n); S.tree[n.id] = (S.tree[n.id]||0)+1; k++; }
-  if(k){ recalcBonus(); panelKey = ""; save(); }
-  return k;
+function buyNode(n){
+  if(!nodeCan(n)) return false;
+  S.souls -= n.cost; S.tree[n.id] = true;
+  recalcBonus(); panelKey = ""; save();
+  if(n.t===TIER_W.length) toast("✦ 神化 ✦ ついに神へと至った！");
+  else toast(`✨ ${n.name} を解放（${treeOwned()} / ${TN.length}）`);
+  return true;
+}
+// 今の効果の合計（掛け合わせた結果）
+function treeSummary(){
+  const M = {}, A = {};
+  TN.forEach(n=>{ if(!S.tree[n.id]) return;
+    if(SUMK[n.k]) A[n.k] = (A[n.k]||0)+n.v; else if(REDK[n.k]) M[n.k] = (M[n.k]||1)*(1-n.v); else M[n.k] = (M[n.k]||1)*(1+n.v); });
+  const out = [];
+  Object.keys(M).forEach(k=>out.push(`<span style="color:${SK_COL[k]}">${SK_NAME[k]}</span> ×${M[k]<100?M[k].toFixed(2):fmt(Math.round(M[k]))}`));
+  Object.keys(A).forEach(k=>out.push(`<span style="color:${SK_COL[k]}">${SK_NAME[k]}</span> +${k==="chest"?Math.round(A[k]*100)+"%":fmt(A[k])}`));
+  return out.join("　") || "まだ何も解放していません";
 }
 function renderSkInfo(){
+  const own = treeOwned(), hi = TN.reduce((m,n)=>S.tree[n.id]?Math.max(m,n.t):m,0);
   $("skSP").textContent = fmt(S.souls)+"（累計 "+fmt(S.soulsAll)+"）";
   $("skClose").textContent = R.pendingRun ? "▶ 次の人生を始める" : "▶ 防衛に戻る";
-  $("skList").innerHTML = BR.map((b,i)=>{
-    const ns = TN.filter(n=>n.br===i), tot = ns.reduce((s,n)=>s+(S.tree[n.id]||0),0), mx = ns.reduce((s,n)=>s+n.max,0);
-    return `<div style="margin-bottom:3px"><b style="color:${b.c}">${b.n}</b> <span class="note">${tot}/${mx}</span>　<span style="font-size:11px;color:var(--dim)">${ns.filter(n=>S.tree[n.id]).map(n=>effText(n.k,n.v*S.tree[n.id])).join(" ／ ")||"―"}</span></div>`;
-  }).join("");
+  $("skList").innerHTML = `<div style="margin-bottom:6px">解放 <b>${own}</b> / ${TN.length}　現在の位階：<b style="color:#fde68a">${hi ? REALMS[hi-1]+(hi>=TIER_W.length-1?"":"の域") : "人の身"}</b></div>
+    <div class="pbar"><i style="width:${own/TN.length*100}%"></i></div>
+    <div style="font-size:12px;line-height:1.7">${treeSummary()}</div>`;
   const el = $("skInfo");
-  if(!skSel){ el.innerHTML = "スキルをクリックして詳細を見る<br><span class=\"note\">光っている輪のスキルが強化可能です。中央から枝をたどって開放します（親スキルを1Lv以上にすると子が開放）。</span>"; return; }
-  const n = TNI[skSel], lv = S.tree[n.id]||0, open = nodeOpen(n), maxed = lv>=n.max, c = nodeCost(n), can = open && !maxed && S.souls>=c;
-  el.innerHTML = `<b style="font-size:16px;color:${BR[n.br].c}">${n.name}</b>（${BR[n.br].n}）　<span style="font-family:var(--mono)">Lv.${lv} / ${n.max}</span><br>
-    <div style="margin:6px 0;color:var(--text)">1Lvごとに：${effText(n.k,n.v)}</div>
-    <div class="note">現在：${lv?effText(n.k,n.v*lv):"未取得"}</div>
-    ${open?"":`<div class="note" style="color:var(--bad)">先に「${TNI[n.par].name}」を1Lv以上にしてください</div>`}
-    <div class="bar" style="margin:8px 0 0">
-      <button class="btn pri ${can?"":"no"}" id="skBuy">${maxed?"最大レベル":"⬆ 強化（🔮"+fmt(c)+"）"}</button>
-      <button class="btn sm ${can?"":"no"}" id="skBuyMax">まとめて強化</button></div>`;
-  $("skBuy").onclick = ()=>{ if(!buyNode(n,1)) return toast(maxed?"最大レベルです":!open?"親スキルを先に強化してください":"転生ptが足りません", true); renderSkInfo(); };
-  $("skBuyMax").onclick = ()=>{ if(!buyNode(n,999)) return toast("強化できません", true); renderSkInfo(); };
+  if(!skSel){ el.innerHTML = "スキルをクリックして詳細を見る<br><span class=\"note\">いちばん下の段から始まり、解放したスキルとつながる上の段へ登っていきます。上の段ほど強力です。光っている輪のスキルが解放できます。</span>"; return; }
+  const n = TNI[skSel], owned = !!S.tree[n.id], open = nodeOpen(n), can = nodeCan(n);
+  el.innerHTML = `<div class="note">【${REALMS[n.t-1]}${n.t>=TIER_W.length-1?"":"の域"}】第${n.t}段</div>
+    <b style="font-size:16px;color:${SK_COL[n.k]}">${n.name}</b><br>
+    <div style="margin:6px 0;color:var(--text)">${effText(n.k,n.v)}${SUMK[n.k]?"":"（掛け合わせ）"}</div>
+    ${owned?'<div style="color:var(--warn)">解放済み ✓</div>':open?"":'<div class="note" style="color:var(--bad)">下の段のつながったスキルを先に解放してください</div>'}
+    ${owned?"":`<button class="btn pri ${can?"":"no"}" id="skBuy" style="margin-top:8px">✨ 解放する（🔮${fmt(n.cost)}）</button>`}`;
+  if(!owned) $("skBuy").onclick = ()=>{
+    if(!buyNode(n)) return toast(!open ? "下の段のスキルを先に解放してください" : "転生ptが足りません", true);
+    renderSkInfo();
+  };
 }
 skCv.addEventListener("pointerdown", e=>{
   const r = skCv.getBoundingClientRect();
-  const x = (e.clientX-r.left)*1000/r.width, y = (e.clientY-r.top)*1000/r.height;
-  let best = null, bd = 34*34;
+  const x = (e.clientX-r.left)*1000/r.width, y = (e.clientY-r.top)*SKH/r.height;
+  let best = null, bd = 40*40;
   TN.forEach(n=>{ const q = (n.x-x)**2+(n.y-y)**2; if(q<bd){ bd = q; best = n; } });
   skSel = best ? best.id : null; renderSkInfo();
 });
-function openTree(){ R.ov = "sk"; $("skOv").classList.add("open"); renderSkInfo(); drawTree(); }
+function openTree(){
+  R.ov = "sk"; $("skOv").classList.add("open"); renderSkInfo(); drawTree();
+  // 今登っている段（解放できる一番下の段）が見えるようにスクロール
+  const nx = TN.find(n=>!S.tree[n.id] && nodeOpen(n)) || TN[TN.length-1];
+  const box = $("skScroll"), h = skCv.getBoundingClientRect().height;
+  box.scrollTop = Math.max(0, nx.y/SKH*h - box.clientHeight*0.6);
+}
 function closeTree(){
   R.ov = null; $("skOv").classList.remove("open");
   if(R.pendingRun){ R.pendingRun = false; newRun(); save(); toast("新たな人生が始まった。今度こそ地球を守り抜け！"); }
@@ -1929,8 +1982,8 @@ function updHeader(){
   $("hSoul").textContent = fmt(S.souls);
   $("hPop").textContent = popNow().toFixed(1)+"億";
   $("hWave").textContent = S.wave+"（"+S.best+"）";
-  const can = TN.some(n=>nodeOpen(n) && (S.tree[n.id]||0)<n.max && S.souls>=nodeCost(n));
-  $("skBtn").textContent = "♻ 転生スキルツリー"+(can?"（強化可能）":"");
+  const can = TN.some(nodeCan);
+  $("skBtn").textContent = `♻ 転生スキルツリー ${treeOwned()}/${TN.length}`+(can?"（解放可能）":"");
   $("skBtn").classList.toggle("has", can);
   $("colBtn").textContent = `💎 コレクション ${kinds()}/${ITEMS.length}`;
   $("nukeInfo").textContent = "☢ 核ミサイル："+(R.nukeCd<=0 ? "発射可能（宇宙をクリック）" : "再装填 "+Math.ceil(R.nukeCd)+"s");
@@ -1961,7 +2014,8 @@ function frame(ts){
 function init(){
   const st = load();
   recalcBonus();
-  if(st!=="load") newRun();
+  if(st!=="load" && st!=="treeReset") newRun();
+  if(st==="treeReset") setTimeout(()=>toast(`転生スキルツリーを作り直しました。使った転生pt（${S.souls}）をすべて返却しました`), 500);
   if(st==="migrate") setTimeout(()=>toast(`アップデートで転生システムに移行しました。これまでの最高WAVEに応じて 転生pt +${S.souls} を引き継ぎました！`), 500);
   R.waveT = -1; R.fresh = true;
   setSpeed(S.speed);
