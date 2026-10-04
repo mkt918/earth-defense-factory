@@ -700,6 +700,7 @@ const speedMult = w => 1 + Math.min(0.6, 0.008*(w-1));
 // 伸び率には上限（HP_RMAX）があり、転生スキルとエピックアイテムで壁の先へ進める
 const HP_A = 0.13, HP_B = 0.008, HP_W0 = 20, HP_RMAX = 0.20;
 const HP_BASE = 15;
+const MAX_ALIVE = 900;            // 画面上の敵の上限（超えたら新しい敵は出現を待つ。重くならないように）
 const WAVE_GAP = 3.5;             // 出現が終わってから次のDAYまでの秒数（短いほど敵が重なって押し寄せる）
 const HP_LATE = 150, HP_RLATE = 0.09, HP_DEC = 0.0008;   // DAY150を過ぎると伸び率が少しずつ下がり、最低0.07/日
 function hpRate(k){
@@ -809,7 +810,7 @@ function fmt(n){
 const fmtI = n => fmt(Math.floor(n));
 
 /* ====================== 演出（パーティクル・音） ====================== */
-let MAXP = 1400;                   // パーティクルの上限（軽量モードでは少なく）
+let MAXP = 1000;                   // パーティクルの上限（軽量モードでは少なく）
 let LOW = false;                   // 軽量モード
 // 空間グリッド：敵を80pxのマスに振り分け、範囲検索を近くのマスだけで済ませる（敵が1000体いても軽く）
 const GC = 80, GCOLS = Math.ceil(W/GC), GROWS = Math.ceil(H/GC), GRID = Array.from({length:GCOLS*GROWS},()=>[]);
@@ -1079,7 +1080,7 @@ function blast(x,y,r,dmg,skip,color,once){
     const dx = a.x-x, dy = a.y-y;
     if(dx*dx+dy*dy<=r2){ if(once) once.add(a); hit(a,dmg,true); }
   });
-  if(R.fx.length<120) R.fx.push({k:"boom",x,y,r,life:0.32,max:0.32,color:color||"#fb923c"});
+  if(R.fx.length<60) R.fx.push({k:"boom",x,y,r,life:0.32,max:0.32,color:color||"#fb923c"});
   if(R.pt.length<MAXP-20){ const k = Math.min(3, r/60); burst(x,y,color||"#fdba74",Math.floor(9*k),240+r*1.2,0.45,3,90); burst(x,y,"#ffffff",Math.floor(3*k),280+r*1.2,0.2,2,0); }
 }
 // 範囲攻撃で多数を巻き込んだときの表示
@@ -1301,12 +1302,15 @@ function step(dt){
   if(R.comboT>0){ R.comboT -= dt; if(R.comboT<=0) R.combo = 0; }
 
   // ウェーブ管理
+  const crowded = R.aliens.length >= MAX_ALIVE;
   if(R.queue.length){
-    R.spawnT -= dt;
-    while(R.spawnT<=0 && R.queue.length){ spawn(R.queue.shift()); R.spawnT += R.spawnI; }
+    if(!crowded){
+      R.spawnT -= dt;
+      while(R.spawnT<=0 && R.queue.length && R.aliens.length<MAX_ALIVE){ spawn(R.queue.shift()); R.spawnT += R.spawnI; }
+    }
     if(!R.queue.length) R.waveT = 0;
   }else{
-    R.waveT += dt;
+    if(!crowded) R.waveT += dt;
     const hold = S.wave===FINAL_DAY && !R.finalDown && !R.fresh;   // ラスボスを倒すまで次の日は来ない（366日目の開始そのものは止めない）
     if(!hold && (R.waveT >= WAVE_GAP || (R.aliens.length===0 && R.waveT >= 1.0))){       // 前の日の敵を倒しきる前に次が来る
       if(R.fresh) R.fresh = false; else S.wave++;
@@ -1875,7 +1879,7 @@ function sellTurret(t){
 }
 
 /* ====================== 描画 ====================== */
-const cv = $("cv"), ctx = cv.getContext("2d");
+const cv = $("cv"), ctx = cv.getContext("2d", {alpha:false});   // 背景は不透明なので透過なしにして合成を軽くする
 const STARS = Array.from({length:150},()=>[Math.random()*W,Math.random()*H*0.8,Math.random()*1.4+.3]);
 const LANDS = Array.from({length:14},(_,i)=>[40+i*85+Math.random()*30, 10+Math.random()*18, 22+Math.random()*30, Math.random()*0.5-0.25]);
 function poly(x,y,n,r,rot){
@@ -1920,47 +1924,76 @@ function drawBoss(a, A, tm){
   if(a.shMax){ ctx.fillStyle = "#60a5fa"; ctx.fillRect(a.x-w/2,a.y-s-18,w*Math.max(0,a.sh/a.shMax),3); }
   ctx.fillStyle = A.color; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.fillText(A.name, a.x, a.y-s-22);
 }
+const BG = {cv:document.createElement("canvas"), key:null};
+BG.cv.width = W+80; BG.cv.height = H+80;
+function drawBg(key){
+  const c = BG.cv.getContext("2d");
+  BG.key = key;
+  c.setTransform(1,0,0,1,40,40);
+  c.fillStyle = "#050810"; c.fillRect(-40,-40,W+80,H+80);
+  c.fillStyle = "#9fb4d8";
+  STARS.forEach(s=>{ c.globalAlpha = .3+.25*Math.sin(s[0]); c.fillRect(s[0],s[1],s[2],s[2]); });
+  c.globalAlpha = 1;
+  c.save();
+  c.shadowColor = R.flash>0 ? "#f87171" : "#38bdf8"; c.shadowBlur = 28;
+  const g = c.createLinearGradient(0,H-175,0,H);
+  g.addColorStop(0,"#3b82f6"); g.addColorStop(.4,"#1d4ed8"); g.addColorStop(1,"#0b1d4a");
+  c.fillStyle = g; c.beginPath(); c.arc(EC.x,EC.y,EC.r,0,7); c.fill();
+  c.restore();
+  c.save(); c.beginPath(); c.arc(EC.x,EC.y,EC.r,0,7); c.clip();
+  c.fillStyle = "rgba(34,197,94,"+(0.2+0.4*S.popF)+")";
+  LANDS.forEach(l=>{ c.beginPath(); c.ellipse(l[0], surfaceY(l[0])+l[1]+14, l[2], l[1]*0.5, l[3], 0, 7); c.fill(); });
+  c.fillStyle = "rgba(200,40,20,"+(0.35*(1-S.popF))+")"; c.fillRect(0,H-175,W,200);
+  c.restore();
+}
+// 砲台の★表示は文字を毎回描かず、作っておいた小さな画像を貼る
+const STAR_IMG = {};
+function starImg(n){
+  if(STAR_IMG[n]) return STAR_IMG[n];
+  const c = document.createElement("canvas"); c.width = 40; c.height = 14;
+  const x = c.getContext("2d"); x.fillStyle = "#fde68a"; x.font = "bold 10px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("★"+n, 20, 7);
+  return STAR_IMG[n] = c;
+}
+let GSC = 1;                       // 描画解像度の倍率
 function draw(){
   const tm = performance.now()/1000;
+  ctx.setTransform(GSC,0,0,GSC,0,0);
   ctx.save();
   if(R.shake>0) ctx.translate((Math.random()-.5)*R.shake, (Math.random()-.5)*R.shake);
-  ctx.fillStyle = "#050810"; ctx.fillRect(-40,-40,W+80,H+80);
-  ctx.fillStyle = "#9fb4d8";
-  if(!LOW) STARS.forEach(s=>{ ctx.globalAlpha = .3+.25*Math.sin(tm*1.1+s[0]); ctx.fillRect(s[0],s[1],s[2],s[2]); });
-  ctx.globalAlpha = 1;
-
-  // 地球
-  ctx.save();
-  ctx.shadowColor = R.flash>0 ? "#f87171" : "#38bdf8"; ctx.shadowBlur = 28;
-  const g = ctx.createLinearGradient(0,H-175,0,H);
-  g.addColorStop(0,"#3b82f6"); g.addColorStop(.4,"#1d4ed8"); g.addColorStop(1,"#0b1d4a");
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(EC.x,EC.y,EC.r,0,7); ctx.fill();
-  ctx.restore();
-  ctx.save(); ctx.beginPath(); ctx.arc(EC.x,EC.y,EC.r,0,7); ctx.clip();
-  ctx.fillStyle = "rgba(34,197,94,"+(0.2+0.4*S.popF)+")";
-  LANDS.forEach(l=>{ ctx.beginPath(); ctx.ellipse(l[0], surfaceY(l[0])+l[1]+14, l[2], l[1]*0.5, l[3], 0, 7); ctx.fill(); });
-  ctx.fillStyle = "rgba(200,40,20,"+(0.35*(1-S.popF))+")"; ctx.fillRect(0,H-175,W,200);
-  ctx.restore();
+  // 背景（宇宙・星・地球）は変化が少ないので、別のキャンバスに描いておいて貼るだけにする（地球の光のぼかしは毎回描くととても重い）
+  const bgKey = Math.round(S.popF*40)+(R.flash>0?"f":"");
+  if(bgKey!==BG.key) drawBg(bgKey);
+  ctx.drawImage(BG.cv, -40, -40);
 
   if(R.place){
     ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
     ctx.beginPath(); ctx.arc(R.place.x,R.place.y,12,0,7); ctx.stroke(); ctx.setLineDash([]);
   }
   // 砲台の射程（上半分だけ表示。選択中は濃く）
+  const rgP = new Path2D();
   for(const t of S.turrets){
     const sel = R.sel===t;
-    if(!S.showRange && !sel) continue;
+    if((!S.showRange || LOW) && !sel) continue;            // 軽量モードでは選んだ砲台の射程だけ
     const rg = STC[t.type].range*(t.type==="laser" ? sweepReach() : 1);
-    ctx.beginPath(); ctx.arc(t.x,t.y,rg,Math.PI,2*Math.PI); ctx.closePath();
-    if(sel){ ctx.fillStyle = "rgba(56,189,248,.07)"; ctx.fill(); ctx.strokeStyle = "rgba(56,189,248,.55)"; ctx.lineWidth = 1.2; }
-    else { ctx.strokeStyle = "rgba(125,211,252,.13)"; ctx.lineWidth = 1; }
-    ctx.stroke();
+    if(sel){
+      ctx.beginPath(); ctx.arc(t.x,t.y,rg,Math.PI,2*Math.PI); ctx.closePath();
+      ctx.fillStyle = "rgba(56,189,248,.07)"; ctx.fill(); ctx.strokeStyle = "rgba(56,189,248,.55)"; ctx.lineWidth = 1.2; ctx.stroke();
+    }else{ rgP.moveTo(t.x-rg,t.y); rgP.arc(t.x,t.y,rg,Math.PI,2*Math.PI); }   // まとめて1回で描く
   }
+  ctx.strokeStyle = "rgba(125,211,252,.13)"; ctx.lineWidth = 1; ctx.stroke(rgP);
   // 砲台
+  const baseP = new Path2D();
+  for(const t of S.turrets){ baseP.moveTo(t.x+10,t.y); baseP.arc(t.x,t.y,10,0,6.2832); }
+  ctx.fillStyle = "#101a33"; ctx.fill(baseP);
+  ctx.lineWidth = 2;
+  for(const k of TYPES){                                    // 砲台の縁取りは種類ごとにまとめる
+    const q = new Path2D(); let any = false;
+    for(const t of S.turrets) if(t.type===k){ q.moveTo(t.x+10,t.y); q.arc(t.x,t.y,10,0,6.2832); any = true; }
+    if(any){ ctx.strokeStyle = TOWERS[k].color; ctx.stroke(q); }
+  }
   for(const t of S.turrets){
     const T = TOWERS[t.type], stun = t.stun>0;
-    ctx.beginPath(); ctx.arc(t.x,t.y,10,0,7); ctx.fillStyle = "#101a33"; ctx.fill();
-    ctx.strokeStyle = R.sel===t ? "#fff" : stun ? "#64748b" : T.color; ctx.lineWidth = 2; ctx.stroke();
+    if(R.sel===t || stun){ ctx.beginPath(); ctx.arc(t.x,t.y,10,0,7); ctx.strokeStyle = R.sel===t ? "#fff" : "#64748b"; ctx.stroke(); }
     ctx.save(); ctx.translate(t.x,t.y); ctx.rotate(t.ang===undefined ? -Math.PI/2 : t.ang);
     ctx.fillStyle = stun ? "#64748b" : T.color;
     if(t.type==="gun") ctx.fillRect(0,-2,14,4);
@@ -1974,7 +2007,7 @@ function draw(){
     ctx.restore();
     const tr = tierN(t.type);
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if(tr>0){ ctx.fillStyle = "#fde68a"; ctx.font = "bold 9px sans-serif"; ctx.fillText("★"+tr, t.x, t.y+17); }
+    if(tr>0) ctx.drawImage(starImg(tr), t.x-20, t.y+10);
     if(stun){ ctx.fillStyle = "#fde047"; ctx.font = "bold 15px sans-serif"; ctx.fillText("⚡", t.x+11, t.y-11); }
     else if(t.jam){ ctx.fillStyle = "#c084fc"; ctx.font = "bold 14px sans-serif"; ctx.fillText("📡", t.x+11, t.y-11); }
     ctx.textBaseline = "alphabetic";
@@ -2072,9 +2105,10 @@ function draw(){
   }
   ctx.globalAlpha = 1;
   // レーザーの薙ぎ払いとレールガンの照射（地球の内側は描かない）
+  const beams = S.turrets.some(t=>t.sweep||t.beam);
   ctx.save();
-  ctx.beginPath(); ctx.rect(-60,-60,W+120,H+120); ctx.arc(EC.x,EC.y,EC.r,0,7); ctx.clip("evenodd");
-  for(const t of S.turrets){
+  if(beams){ ctx.beginPath(); ctx.rect(-60,-60,W+120,H+120); ctx.arc(EC.x,EC.y,EC.r,0,7); ctx.clip("evenodd"); }
+  if(beams) for(const t of S.turrets){
     if(t.sweep){
       const sw = t.sweep, len = STC.laser.range*sweepReach(), dir = Math.sign(sw.a1-sw.a0);
       for(let i=2;i>=0;i--){
@@ -2140,7 +2174,7 @@ function draw(){
     }else if(f.k==="boom" && LOW){
       ctx.globalAlpha = p*0.45; ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,7); ctx.fill(); ctx.globalAlpha = 1;
     }else if(f.k==="boom"){                                   // グラデーションは重いので、色の円＋白い芯の2枚で描く
-      const rr = f.r*(1.3-p*.4);
+      const rr = Math.min(f.r,130)*(1.3-p*.4);              // 塗りは大きくしすぎない（広さは輪で見せる。大きな塗りは重い）
       ctx.globalAlpha = p*0.45; ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(f.x,f.y,rr,0,7); ctx.fill();
       ctx.globalAlpha = p*0.8; ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(f.x,f.y,rr*0.35,0,7); ctx.fill(); ctx.globalAlpha = 1;
     }else if(f.k==="ring"){
@@ -2348,6 +2382,9 @@ function unitStatText(k){
   if(!PC[k]) return `威力 ${fmt(T.dmg*atkM()*bM("p_"+k))}${per} ／ 射程 ${Math.round(st.range)}${ex}`;
   return `部隊DPS ${fmt(unitDps(k))} ／ 1基の威力 ${fmt(st.dmg)}${per} ／ 射程 ${Math.round(st.range)}${ex}`;
 }
+// 表示の書き換えは、内容が変わったときだけ行う（毎回書き換えると画面の再計算が起きて重くなる）
+function setT(el, v){ v = String(v); if(el._v!==v){ el._v = v; el.textContent = v; } }
+function setH(el, v){ if(el._v!==v){ el._v = v; el.innerHTML = v; } }
 function buildUnits(){
   const box = $("units"); box.innerHTML = "";
   TYPES.forEach(k=>{
@@ -2364,19 +2401,19 @@ function buildUnits(){
 }
 function updUnits(){
   recount();
-  $("nextUnlock").innerHTML = nextUnlockText();
+  setH($("nextUnlock"), nextUnlockText());
   TYPES.forEach(k=>{
     const T = TOWERS[k], ok = S.best>=T.unlock, c = buildCost(k), el = $("u_"+k);
     el.hidden = !ok;
     if(!ok) return;
     const up = upsOf(k), full = PC[k]>=MAX_PER;
-    $("uc_"+k).textContent = `配置 ${PC[k]}/${MAX_PER}`+(up ? `　強化 +${up}` : "");
-    $("ut_"+k).textContent = tierN(k)>0 ? "★"+tierN(k) : "";
+    setT($("uc_"+k), `配置 ${PC[k]}/${MAX_PER}`+(up ? `　強化 +${up}` : ""));
+    setT($("ut_"+k), tierN(k)>0 ? "★"+tierN(k) : "");
     $("ub_"+k).style.width = (TC[k]%TIER_N/TIER_N*100)+"%";
     $("ud_"+k).hidden = PC[k]>0;
-    $("us_"+k).textContent = unitStatText(k);
+    setT($("us_"+k), unitStatText(k));
     const btn = $("ubuy_"+k);
-    btn.innerHTML = `<span>${full ? "⚡ 部隊を強化（威力×"+UP_G+"）" : "＋1基 配置"+(R.place?"（選んだ場所）":"")}<span class="note" style="color:inherit;opacity:.75">　★まで ${TIER_N-TC[k]%TIER_N}</span></span>${costHtml(c)}`;
+    setH(btn, `<span>${full ? "⚡ 部隊を強化（威力×"+UP_G+"）" : "＋1基 配置"+(R.place?"（選んだ場所）":"")}<span class="note" style="color:inherit;opacity:.75">　★まで ${TIER_N-TC[k]%TIER_N}</span></span>${costHtml(c)}`);
     btn.classList.toggle("no", S.gold<c);
   });
 }
@@ -2384,6 +2421,7 @@ function updUnits(){
 function setTab(t){
   document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===t));
   ["u","o","r"].forEach(k=>{ $("tab_"+k).hidden = k!==t; });
+  if(t==="u") updUnits(); else if(t==="o") updOrb(); else { updReb(); updBdSummary(); }
   try{ localStorage.setItem("edf_tab", t); }catch(e){}
 }
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick = ()=>setTab(b.dataset.tab));
@@ -2402,12 +2440,12 @@ function buildOrb(){
 function updOrb(){
   ORB_UP.forEach(o=>{
     const lv = S.orb[o.k], mx = lv>=o.max, c = orbUpCost(o);
-    $("obl_"+o.k).textContent = "Lv."+lv+(mx?"（最大）":"");
-    $("obc_"+o.k).innerHTML = mx ? "MAX" : costHtml(c);
+    setT($("obl_"+o.k), "Lv."+lv+(mx?"（最大）":""));
+    setH($("obc_"+o.k), mx ? "MAX" : costHtml(c));
     $("ob_"+o.k).classList.toggle("no", mx || S.gold<c);
   });
   $("tabDotO").classList.toggle("on", ORB_UP.some(o=>S.orb[o.k]<o.max && S.gold>=orbUpCost(o)));
-  $("orbSt").textContent = `威力 ${fmt(orbDmg())} ／ 範囲 ${Math.round(orbR())}px ／ 同時 ${orbTargets()}体 ／ 間隔 ${orbTick().toFixed(3)}秒 ／ DPS 約${fmt(orbDps())}`;
+  setT($("orbSt"), `威力 ${fmt(orbDmg())} ／ 範囲 ${Math.round(orbR())}px ／ 同時 ${orbTargets()}体 ／ 間隔 ${orbTick().toFixed(3)}秒 ／ DPS 約${fmt(orbDps())}`);
 }
 function buildReb(){
   $("rebBox").innerHTML = `<div class="card" id="rebInfo" style="margin-bottom:6px"></div>
@@ -2421,7 +2459,7 @@ function buildReb(){
 }
 const canRebirth = () => S.runBest >= S.runStart+5 && soulGain()>0;
 function updReb(){
-  $("rebInfo").innerHTML = `今の人生：最高 DAY <b>${S.runBest}</b> ／ ボス撃破 <b>${S.runBoss}</b> 体<br>今転生すると 🔮 <b style="color:#c4b5fd">+${soulGain()}</b> 転生pt（転生回数 ${S.rebirths}）`;
+  setH($("rebInfo"), `今の人生：最高 DAY <b>${S.runBest}</b> ／ ボス撃破 <b>${S.runBoss}</b> 体<br>今転生すると 🔮 <b style="color:#c4b5fd">+${soulGain()}</b> 転生pt（転生回数 ${S.rebirths}）`);
   $("rebBtn").classList.toggle("no", !canRebirth());
 }
 function renderPanel(){
@@ -2705,8 +2743,12 @@ $("clearGo").onclick = ()=>{ $("clearOv").classList.remove("open"); R.cleared = 
 /* ====================== 画質（軽量モード） ====================== */
 function applyGfx(){
   LOW = S.gfx==="low" || (S.gfx==="auto" && R.autoLow);
-  MAXP = LOW ? 400 : 1400;
+  MAXP = LOW ? 300 : 1000;
   if(LOW && R.pt.length>MAXP) R.pt.length = MAXP;
+  // 軽量モードでは内部の描画解像度を 0.7倍 にして、塗る量そのものを減らす（見た目の大きさは同じ）
+  GSC = LOW ? 0.7 : 1;
+  const w = Math.round(W*GSC), h = Math.round(H*GSC);
+  if(cv.width!==w){ cv.width = w; cv.height = h; }
   $("gfxBtn").textContent = "⚙ 画質："+({auto:"自動",high:"標準",low:"軽量"}[S.gfx])+(S.gfx==="auto" ? (LOW ? "（軽量中）" : "") : "");
 }
 $("gfxBtn").onclick = ()=>{
@@ -2838,16 +2880,16 @@ $("wipe").addEventListener("click", ()=>{
   }
 });
 function updHeader(){
-  $("hGold").textContent = fmtI(S.gold); $("hRate").textContent = "+"+fmt(goldRate())+"/s";
-  $("hSoul").textContent = fmt(S.souls);
-  $("hPop").textContent = popNow().toFixed(1)+"億";
-  $("hWave").textContent = "DAY "+S.wave+"（最高 "+S.best+"）";
+  setT($("hGold"), fmtI(S.gold)); setT($("hRate"), "+"+fmt(goldRate())+"/s");
+  setT($("hSoul"), fmt(S.souls));
+  setT($("hPop"), popNow().toFixed(1)+"億");
+  setT($("hWave"), "DAY "+S.wave+"（最高 "+S.best+"）");
   const can = TN.some(nodeCan);
-  $("skBtn").textContent = `♻ 転生スキルツリー ${treeOwned()}/${TN.length}`+(can?"（解放可能）":"");
+  setT($("skBtn"), `♻ 転生スキルツリー ${treeOwned()}/${TN.length}`+(can?"（解放可能）":""));
   $("skBtn").classList.toggle("has", can);
-  $("colBtn").textContent = `💎 ${kinds()}/${ITEMS.length} 🏆 ${achCount()}/${ACH.length}`;
-  $("bdBtn").textContent = `🧩 ビルド ${validEquip().length}/${slotCount()}`;
-  $("nukeInfo").textContent = "☢ 核ミサイル："+(R.nukeCd<=0 ? "発射可能（宇宙をクリック）" : "再装填 "+Math.ceil(R.nukeCd)+"s");
+  setT($("colBtn"), `💎 ${kinds()}/${ITEMS.length} 🏆 ${achCount()}/${ACH.length}`);
+  setT($("bdBtn"), `🧩 ビルド ${validEquip().length}/${slotCount()}`);
+  setT($("nukeInfo"), "☢ 核ミサイル："+(R.nukeCd<=0 ? "発射可能（宇宙をクリック）" : "再装填 "+Math.ceil(R.nukeCd)+"s"));
 }
 
 /* ====================== メインループ ====================== */
@@ -2859,7 +2901,7 @@ function frame(ts){
   if(!paused){
     if(R.slowT>0){ R.slowT -= real; dt *= 0.3; }
     // 倍速のときは1フレームにまとめて進める（軽量モードでは1回の刻みを大きくして回数を減らす）
-    const total = dt*S.speed, maxStep = LOW ? 0.07 : 0.034, n = Math.min(8, Math.ceil(total/maxStep - 1e-9));
+    const total = dt*S.speed, maxStep = LOW ? 0.08 : 0.05, n = Math.min(5, Math.ceil(total/maxStep - 1e-9));
     for(let k=0;k<n;k++) step(total/n);
     if(S.speed>0) S.runTime += real;
     if(R.rouQ>0 && !R.dead) openRoulette();
@@ -2873,7 +2915,11 @@ function frame(ts){
   uiAcc += real;
   if(uiAcc>0.15){
     uiAcc = 0;
-    updHeader(); renderPanel(); updUnits(); updOrb(); updReb(); updBdSummary(); checkAch(); checkUnlocks();
+    updHeader(); renderPanel();
+    if(!$("tab_u").hidden) updUnits();                // 見えているタブだけ更新する
+    updOrb();
+    if(!$("tab_r").hidden){ updReb(); updBdSummary(); }
+    checkAch(); checkUnlocks();
     document.title = "DAY "+S.wave+" - 地球防衛ファクトリー";
   }
   if((saveAcc += real) > 5){ saveAcc = 0; if(!R.dead) save(); }
